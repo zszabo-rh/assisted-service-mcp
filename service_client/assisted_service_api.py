@@ -14,18 +14,13 @@ from service_client.logger import log
 class InventoryClient(object):
     def __init__(
         self,
-        inventory_url: str,
         offline_token: Optional[str],
-        service_account: Optional[ServiceAccount],
-        refresh_token: Optional[str],
     ):
         self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
         configs = Configuration()
         configs.host = self.get_host(configs)
         configs.debug = True
-        self.set_config_auth(
-            c=configs, offline_token=offline_token, service_account=service_account, refresh_token=refresh_token
-        )
+        self.set_config_auth(c=configs, offline_token=offline_token)
 
         self.api = ApiClient(configuration=configs)
         self.client = api.InstallerApi(api_client=self.api)
@@ -42,8 +37,6 @@ class InventoryClient(object):
         cls,
         c: Configuration,
         offline_token: Optional[str],
-        service_account: Optional[ServiceAccount],
-        refresh_token: Optional[str],
     ) -> None:
 
         @retry(exceptions=requests.HTTPError, tries=5, delay=5)

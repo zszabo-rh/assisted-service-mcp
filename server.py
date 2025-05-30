@@ -11,9 +11,8 @@ if __name__ == "__main__":
     mcp.run()
 
 def get_client() -> InventoryClient:
-    url = os.environ["API_URL"]
     token = os.environ["OFFLINE_TOKEN"]
-    return InventoryClient(url, token, None, None)
+    return InventoryClient(token)
 
 
 @mcp.tool()
