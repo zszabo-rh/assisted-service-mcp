@@ -146,8 +146,8 @@ urllib3_logger.setLevel(logging.ERROR)
 log = logging.getLogger(logger_name)
 log.setLevel(get_logging_level())
 
-add_log_file_handler(log, "test_infra.log")
-add_log_file_handler(urllib3_logger, "test_infra.log")
+add_log_file_handler(log, "assisted-service-mcp.log")
+add_log_file_handler(urllib3_logger, "assisted-service-mcp.log")
 add_stream_handler(log)
 add_stream_handler(urllib3_logger)
 
