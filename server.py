@@ -28,10 +28,10 @@ def cluster_events(cluster_id: str) -> str:
     return get_client().get_events(cluster_id=cluster_id)
 
 @mcp.tool()
-def host_events(host_id: str) -> str:
-    """Get the events related to a host with the given id"""
+def host_events(cluster_id: str, host_id: str) -> str:
+    """Get the events related to a host with within a cluster"""
 
-    return get_client().get_events(host_id=host_id)
+    return get_client().get_events(cluster_id=cluster_id, host_id=host_id)
 
 @mcp.tool()
 def infraenv_info(infraenv_id: str) -> str:
