@@ -6,14 +6,14 @@ Diagnose cluster failures and find out how to fix them.
 
 Try it out:
 
-Clone the repo:
+1. Clone the repo:
 ```
 git clone git@github.com:carbonin/assisted-service-mcp.git
 ```
 
-Get your OpenShift API token from https://cloud.redhat.com/openshift/token
+2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
 
-Configure the MCP server in the client of your choice
+3. Configure the MCP server in the client of your choice
 In VSCode for example:
 ```json
    "mcp": {
@@ -36,5 +36,5 @@ In VSCode for example:
     }
 ```
 
-Ask about your clusters:
+4. Ask about your clusters:
 ![Example prompt asking about a cluster](images/cluster-prompt-example.png)
