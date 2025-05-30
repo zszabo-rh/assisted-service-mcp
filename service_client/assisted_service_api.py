@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 import base64
-import enum
 import json
 import os
 import time
@@ -9,34 +7,9 @@ from urllib.parse import urlparse
 
 import requests
 from assisted_service_client import ApiClient, Configuration, api, models
-from netaddr import IPAddress, IPNetwork
-from pydantic import BaseModel
 from retry import retry
 
 from service_client.logger import log
-
-
-class ServiceAccount(BaseModel):
-    client_id: Optional[str]
-    client_secret: Optional[str]
-
-    def __hash__(self):
-        return hash((self.client_id, self.client_secret))
-
-    def __eq__(self, other):
-        if isinstance(other, ServiceAccount):
-            return self.client_id == other.client_id and self.client_secret == other.client_secret
-        return False
-
-    def is_provided(self) -> bool:
-        return self.client_id is not None and self.client_secret is not None
-
-
-class AuthenticationMethod(enum.Enum):
-    OFFLINE_TOKEN = "OFFLINE_TOKEN"
-    SERVICE_ACCOUNT = "SERVICE_ACCOUNT"
-    REFRESH_TOKEN = "REFRESH_TOKEN"
-
 
 class InventoryClient(object):
     def __init__(
@@ -46,7 +19,7 @@ class InventoryClient(object):
         service_account: Optional[ServiceAccount],
         refresh_token: Optional[str],
     ):
-        self.inventory_url = inventory_url
+        self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
         configs = Configuration()
         configs.host = self.get_host(configs)
         configs.debug = True
@@ -72,18 +45,6 @@ class InventoryClient(object):
         service_account: Optional[ServiceAccount],
         refresh_token: Optional[str],
     ) -> None:
-        if service_account is not None and service_account.is_provided():
-            authentication_method = AuthenticationMethod.SERVICE_ACCOUNT
-            log.info("authenticating to assisted service using service account")
-        elif refresh_token is not None:
-            authentication_method = AuthenticationMethod.REFRESH_TOKEN
-            log.info("authenticating to assisted service using ocm cli refresh token")
-        else:
-            log.info("service account or refresh token was not provided, trying offline token")
-            if offline_token is None:
-                log.info("offline token wasn't provided as well, skipping authentication headers")
-                return
-            authentication_method = AuthenticationMethod.OFFLINE_TOKEN
 
         @retry(exceptions=requests.HTTPError, tries=5, delay=5)
         def refresh_api_key(config: Configuration) -> None:
@@ -101,35 +62,16 @@ class InventoryClient(object):
                 if expires_on == 0 or remaining > 600:
                     return
 
-            # fetch new key if expired or not set yet
-            if authentication_method == AuthenticationMethod.SERVICE_ACCOUNT:
-                params = {
-                    "grant_type": "client_credentials",
-                    "client_id": service_account.client_id,
-                    "client_secret": service_account.client_secret,
-                }
-            elif authentication_method == AuthenticationMethod.REFRESH_TOKEN:
-                params = {
-                    "client_id": "ocm-cli",
-                    "grant_type": "refresh_token",
-                    "refresh_token": refresh_token,
-                }
-            else:
-                params = {
-                    "client_id": "cloud-services",
-                    "grant_type": "refresh_token",
-                    "refresh_token": offline_token,
-                }
-
             log.info("Refreshing API key")
-            try:
-                sso_url = os.environ["SSO_URL"]
-            except KeyError:
-                log.error("The environment variable SSO_URL is mandatory but was not supplied")
-                raise
-            else:
-                response = requests.post(sso_url, data=params)
 
+            params = {
+                "client_id": "cloud-services",
+                "grant_type": "refresh_token",
+                "refresh_token": offline_token,
+            }
+
+            sso_url = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+            response = requests.post(sso_url, data=params)
             response.raise_for_status()
 
             config.api_key["Authorization"] = response.json()["access_token"]
