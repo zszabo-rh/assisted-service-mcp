@@ -49,7 +49,7 @@ class InventoryClient(object):
         self.inventory_url = inventory_url
         configs = Configuration()
         configs.host = self.get_host(configs)
-        configs.verify_ssl = False
+        configs.debug = True
         self.set_config_auth(
             c=configs, offline_token=offline_token, service_account=service_account, refresh_token=refresh_token
         )
