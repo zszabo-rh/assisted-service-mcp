@@ -13,7 +13,11 @@ git clone git@github.com:carbonin/assisted-service-mcp.git
 
 2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
 
-3. Configure the MCP server in the client of your choice
+
+3. The server is started and configured differently depending on what transport you want to use
+
+For STDIO:
+
 In VSCode for example:
 ```json
    "mcp": {
@@ -33,6 +37,21 @@ In VSCode for example:
                 }
             }
         }
+    }
+```
+
+For SSE (recommended):
+
+Start the server in a terminal:
+
+`OFFLINE_TOKEN=<your token> uv run --with mcp mcp run --transport=sse ./server.py`
+
+Configure the server in the client:
+
+```json
+    "assisted-sse": {
+      "transport": "sse",
+      "url": "http://localhost:8000/sse"
     }
 ```
 

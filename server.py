@@ -8,7 +8,7 @@ from service_client import InventoryClient
 mcp = FastMCP("AssistedService")
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="sse", host="0.0.0.0", port=8000)
 
 def get_client() -> InventoryClient:
     token = os.environ["OFFLINE_TOKEN"]
