@@ -14,18 +14,21 @@ from service_client.logger import log
 class InventoryClient(object):
     def __init__(
         self,
-        offline_token: Optional[str],
+        offline_token: str,
+        pull_secret: str,
     ):
         self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
         configs = Configuration()
         configs.host = self.get_host(configs)
         configs.debug = True
         self.set_config_auth(c=configs, offline_token=offline_token)
+        self.pull_secret = pull_secret
 
         self.api = ApiClient(configuration=configs)
         self.client = api.InstallerApi(api_client=self.api)
         self.events = api.EventsApi(api_client=self.api)
         self.operators = api.OperatorsApi(api_client=self.api)
+        self.versions = api.VersionsApi(api_client=self.api)
 
     def get_host(self, configs: Configuration) -> str:
         parsed_host = urlparse(configs.host)
@@ -202,3 +205,45 @@ class InventoryClient(object):
     def get_discovery_ignition(self, infra_env_id: str) -> str:
         infra_env = self.get_infra_env(infra_env_id=infra_env_id)
         return infra_env.ingition_config_override
+
+    def create_cluster(self, name: str, version: str, **cluster_params) -> models.cluster.Cluster:
+        params = models.ClusterCreateParams(name=name, openshift_version=version, pull_secret=self.pull_secret, **cluster_params)
+        log.info("Creating cluster with params %s", params.__dict__)
+        result = self.client.v2_register_cluster(new_cluster_params=params)
+        return result
+
+    def update_cluster(self, cluster_id: str, api_vip: Optional[str] = "", ingress_vip: Optional[str] = "", **update_params) -> models.cluster.Cluster:
+        params = models.V2ClusterUpdateParams(**update_params)
+        if api_vip != "":
+            params.api_vips = [models.ApiVip(cluster_id=cluster_id, ip=api_vip)]
+        if ingress_vip != "":
+            params.ingress_vips = [models.IngressVip(cluster_id=cluster_id, ip=ingress_vip)]
+
+        log.info("Updating cluster %s with params %s", cluster_id, params)
+        return self.client.v2_update_cluster(cluster_id=cluster_id, cluster_update_params=params)
+
+    def install_cluster(self, cluster_id: str) -> models.cluster.Cluster:
+        log.info("Installing cluster %s", cluster_id)
+        return self.client.v2_install_cluster(cluster_id=cluster_id)
+
+    def create_infra_env(self, name: str, **infra_env_params) -> models.infra_env.InfraEnv:
+        infra_env = models.InfraEnvCreateParams(name=name, pull_secret=self.pull_secret, **infra_env_params)
+        log.info("Creating infra-env with params %s", infra_env.__dict__)
+        result = self.client.register_infra_env(infraenv_create_params=infra_env)
+        return result
+
+    def get_openshift_versions(self, only_latest: bool) -> models.OpenshiftVersions:
+        return self.versions.v2_list_supported_openshift_versions(only_latest=only_latest)
+
+    def get_operator_bundles(self):
+        bundles = self.operators.v2_list_bundles()
+        return [bundle.to_dict() for bundle in bundles]
+
+    def add_operator_bundle_to_cluster(self, cluster_id: str, bundle_name: str) -> models.cluster.Cluster:
+        bundle = self.operators.v2_get_bundle(bundle_name)
+        olm_operators = [models.OperatorCreateParams(name=op_name) for op_name in bundle.operators]
+        return self.update_cluster(cluster_id=cluster_id, olm_operators=olm_operators)
+
+    def update_host(self, host_id: str, infra_env_id: str, **update_params) -> models.host.Host:
+        params = models.HostUpdateParams(**update_params)
+        return self.client.v2_update_host(infra_env_id,host_id, params)
