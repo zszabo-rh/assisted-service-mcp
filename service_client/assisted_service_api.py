@@ -95,14 +95,11 @@ class InventoryClient(object):
     def get_hosts_in_error_status(self, cluster_id: str):
         return self.get_hosts_in_statuses(cluster_id, ["error"])
 
-    def clusters_list(self) -> List[Dict[str, Any]]:
+    def list_clusters(self) -> List[Dict[str, Any]]:
         return self.client.v2_list_clusters()
 
     def infra_envs_list(self) -> List[Dict[str, Any]]:
         return self.client.list_infra_envs()
-
-    def get_all_clusters(self) -> List[Dict[str, Any]]:
-        return self.client.v2_list_clusters(get_unregistered_clusters=True)
 
     def get_cluster(self, cluster_id: str, get_unregistered_clusters: bool = False) -> models.cluster.Cluster:
         return self.client.v2_get_cluster(cluster_id=cluster_id, get_unregistered_clusters=get_unregistered_clusters)

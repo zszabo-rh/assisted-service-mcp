@@ -22,6 +22,16 @@ def cluster_info(cluster_id: str) -> str:
     return get_client().get_cluster(cluster_id=cluster_id).to_str()
 
 @mcp.tool()
+def list_clusters() -> str:
+    """
+    Lists all of the current user's assisted installer clusters.
+    Returns only minimal cluster information, use cluster_info to get more detailed information
+    """
+    clusters = get_client().list_clusters()
+    resp = [{"name": cluster["name"], "id": cluster["id"], "openshift_version": cluster["openshift_version"], "status": cluster["status"]} for cluster in clusters]
+    return json.dumps(resp)
+
+@mcp.tool()
 def cluster_events(cluster_id: str) -> str:
     """Get the events related to a cluster with the given id"""
 
