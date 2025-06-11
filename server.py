@@ -53,14 +53,15 @@ def infraenv_info(infraenv_id: str) -> str:
     return get_client().get_infra_env(infraenv_id).to_str()
 
 @mcp.tool()
-def create_cluster(name: str, version: str, base_domain: str) -> str:
+def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
     """
     Create a new assisted installer cluster and infraenv with the given name, openshift version, and base domain.
+    The single_node arg should be set to True only when the user specifically requests a single node cluster or no high availability
     Returns the created cluster id and infraenv id formatted as json.
     """
 
     client = get_client()
-    cluster = client.create_cluster(name, version, base_dns_domain=base_domain)
+    cluster = client.create_cluster(name, version, single_node, base_dns_domain=base_domain)
     infraenv = client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
 
     return json.dumps({'cluster_id': cluster.id, 'infraenv_id': infraenv.id})

@@ -203,7 +203,12 @@ class InventoryClient(object):
         infra_env = self.get_infra_env(infra_env_id=infra_env_id)
         return infra_env.ingition_config_override
 
-    def create_cluster(self, name: str, version: str, **cluster_params) -> models.cluster.Cluster:
+    def create_cluster(self, name: str, version: str, single_node: bool, **cluster_params) -> models.cluster.Cluster:
+        if single_node:
+            cluster_params["control_plane_count"] = 1
+            cluster_params["high_availability_mode"] = "None"
+            cluster_params["user_managed_networking"] = True
+
         params = models.ClusterCreateParams(name=name, openshift_version=version, pull_secret=self.pull_secret, **cluster_params)
         log.info("Creating cluster with params %s", params.__dict__)
         result = self.client.v2_register_cluster(new_cluster_params=params)
