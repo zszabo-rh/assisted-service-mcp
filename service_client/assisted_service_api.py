@@ -9,9 +9,9 @@ from retry import retry
 from service_client.logger import log
 
 class InventoryClient(object):
-    def __init__(self):
+    def __init__(self, offline_token: str):
         self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
-        self.offline_token = os.environ["OFFLINE_TOKEN"]
+        self.offline_token = offline_token
         self.access_token = self._get_access_token(self.offline_token)
         self.pull_secret = self._get_pull_secret(self.access_token)
 

@@ -13,7 +13,6 @@ git clone git@github.com:carbonin/assisted-service-mcp.git
 
 2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
 
-
 3. The server is started and configured differently depending on what transport you want to use
 
 For STDIO:
@@ -52,6 +51,21 @@ Configure the server in the client:
     "assisted-sse": {
       "transport": "sse",
       "url": "http://localhost:8000/sse"
+    }
+```
+
+### Providing the Offline Token via Request Header
+
+If you do not set the `OFFLINE_TOKEN` environment variable, you can provide the token as a request header.
+When configuring your MCP client, add the `OCM-Offline-Token` header:
+
+```json
+    "assisted-sse": {
+      "transport": "sse",
+      "url": "http://localhost:8000/sse",
+      "headers": {
+        "OCM-Offline-Token": "<your token>"
+      }
     }
 ```
 
