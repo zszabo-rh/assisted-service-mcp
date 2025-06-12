@@ -12,7 +12,8 @@ class InventoryClient(object):
     def __init__(self):
         self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
         self.offline_token = os.environ["OFFLINE_TOKEN"]
-        self.pull_secret = os.environ["PULL_SECRET"]
+        self.access_token = self._get_access_token(self.offline_token)
+        self.pull_secret = self._get_pull_secret(self.access_token)
 
     def _get_access_token(self, offline_token: str) -> str:
         params = {
@@ -25,12 +26,19 @@ class InventoryClient(object):
         response.raise_for_status()
         return response.json()["access_token"]
 
+    def _get_pull_secret(self, access_token: str) -> str:
+        url = "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.post(url, headers=headers)
+        response.raise_for_status()
+        return response.text
+
     def _get_client(self):
         configs = Configuration()
         configs.host = self.get_host(configs)
         configs.debug = True
         configs.api_key_prefix["Authorization"] = "Bearer"
-        configs.api_key["Authorization"] = self._get_access_token(self.offline_token)
+        configs.api_key["Authorization"] = self.access_token
         api_client = ApiClient(configuration=configs)
         return api_client
 
