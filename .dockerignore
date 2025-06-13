@@ -1,0 +1,16 @@
+# Python specific
+**/__pycache__/
+**/*.pyc
+.venv/
+
+# Editors & IDEs
+.vscode/
+*.swp
+*.swo
+
+# Version control
+.git/
+.gitignore
+
+# Logs
+*.log

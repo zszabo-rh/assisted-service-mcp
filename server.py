@@ -4,7 +4,7 @@ import os
 
 from service_client import InventoryClient
 
-mcp = FastMCP("AssistedService")
+mcp = FastMCP("AssistedService", host="0.0.0.0")
 
 def get_offline_token():
     token = os.environ.get("OFFLINE_TOKEN")
