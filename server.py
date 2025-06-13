@@ -105,4 +105,4 @@ def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     return InventoryClient(get_offline_token()).update_host(host_id, infraenv_id, host_role=role).to_str()
 
 if __name__ == "__main__":
-    mcp.run(transport="sse", host="0.0.0.0", port=8000)
+    mcp.run(transport="sse")

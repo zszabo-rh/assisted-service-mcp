@@ -43,7 +43,7 @@ For SSE (recommended):
 
 Start the server in a terminal:
 
-`OFFLINE_TOKEN=<your token> uv run --with mcp mcp run --transport=sse ./server.py`
+`OFFLINE_TOKEN=<your token> uv run server.py`
 
 Configure the server in the client:
 
