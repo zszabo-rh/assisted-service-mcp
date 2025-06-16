@@ -3,6 +3,8 @@ FROM registry.redhat.io/ubi9/python-311:9.6
 ENV APP_HOME=/opt/app-root/src
 WORKDIR ${APP_HOME}
 
+USER 0
+
 RUN pip install uv
 
 COPY pyproject.toml .
