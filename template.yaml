@@ -8,6 +8,10 @@ parameters:
     value: quay.io/carbonin/assisted-service-mcp
   - name: IMAGE_TAG
     value: latest
+  - name: CERT_MANAGER_ISSUER_NAME
+    value: letsencrypt-dns
+  - name: MCP_HOST
+    value: assisted-service-mcp.example.com
 objects:
 - apiVersion: apps/v1
   kind: Deployment
@@ -55,11 +59,18 @@ objects:
   kind: Route
   metadata:
     name: assisted-service-mcp
+    annotations:
+      cert-manager.io/issuer-kind: ClusterIssuer
+      cert-manager.io/issuer-name: ${CERT_MANAGER_ISSUER_NAME}
     labels:
       app: assisted-service-mcp
   spec:
+    host: ${MCP_HOST}
     to:
       kind: Service
       name: assisted-service-mcp
     port:
       targetPort: 8000
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
