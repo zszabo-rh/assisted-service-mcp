@@ -8,10 +8,16 @@ parameters:
     value: quay.io/carbonin/assisted-service-mcp
   - name: IMAGE_TAG
     value: latest
+  - name: INVENTORY_URL
+    value: "https://api.openshift.com/api/assisted-install/v2"
   - name: CERT_MANAGER_ISSUER_NAME
     value: letsencrypt-dns
   - name: MCP_HOST
     value: assisted-service-mcp.example.com
+  - name: SSO_URL
+    value: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+  - name: PULL_SECRET_URL
+    value: "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
 objects:
 - apiVersion: apps/v1
   kind: Deployment
@@ -42,6 +48,13 @@ objects:
             requests:
               cpu: 50m
               memory: 64Mi
+          env:
+          - name: INVENTORY_URL
+            value: ${INVENTORY_URL}
+          - name: SSO_URL
+            value: ${SSO_URL}
+          - name: PULL_SECRET_URL
+            value: ${PULL_SECRET_URL}
 - apiVersion: v1
   kind: Service
   metadata:

@@ -10,7 +10,7 @@ from service_client.logger import log
 
 class InventoryClient(object):
     def __init__(self, offline_token: str):
-        self.inventory_url = "https://api.openshift.com/api/assisted-install/v2"
+        self.inventory_url = os.environ.get("INVENTORY_URL", "https://api.openshift.com/api/assisted-install/v2")
         self.offline_token = offline_token
         self.access_token = self._get_access_token(self.offline_token)
         self.pull_secret = self._get_pull_secret(self.access_token)
@@ -21,13 +21,13 @@ class InventoryClient(object):
             "grant_type": "refresh_token",
             "refresh_token": offline_token,
         }
-        sso_url = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+        sso_url = os.environ.get("SSO_URL", "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token")
         response = requests.post(sso_url, data=params)
         response.raise_for_status()
         return response.json()["access_token"]
 
     def _get_pull_secret(self, access_token: str) -> str:
-        url = "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
+        url = os.environ.get("PULL_SECRET_URL", "https://api.openshift.com/api/accounts_mgmt/v1/access_token")
         headers = {"Authorization": f"Bearer {access_token}"}
         response = requests.post(url, headers=headers)
         response.raise_for_status()
