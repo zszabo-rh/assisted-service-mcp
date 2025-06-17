@@ -109,7 +109,7 @@ add_log_record("")
 
 def get_logging_level():
     level = os.environ.get("LOGGING_LEVEL", "")
-    return logging.getLevelName(level.upper()) if level else logging.DEBUG
+    return logging.getLevelName(level.upper()) if level else logging.INFO
 
 
 logging.getLogger("requests").setLevel(logging.ERROR)

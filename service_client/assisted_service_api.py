@@ -14,6 +14,7 @@ class InventoryClient(object):
         self.offline_token = offline_token
         self.access_token = self._get_access_token(self.offline_token)
         self.pull_secret = self._get_pull_secret(self.access_token)
+        self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
 
     def _get_access_token(self, offline_token: str) -> str:
         params = {
@@ -36,11 +37,10 @@ class InventoryClient(object):
     def _get_client(self):
         configs = Configuration()
         configs.host = self.get_host(configs)
-        configs.debug = True
+        configs.debug = self.client_debug
         configs.api_key_prefix["Authorization"] = "Bearer"
         configs.api_key["Authorization"] = self.access_token
-        api_client = ApiClient(configuration=configs)
-        return api_client
+        return ApiClient(configuration=configs)
 
     def _installer_api(self):
         api_client = self._get_client()
