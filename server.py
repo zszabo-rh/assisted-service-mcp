@@ -7,6 +7,20 @@ from service_client import InventoryClient
 mcp = FastMCP("AssistedService", host="0.0.0.0")
 
 def get_offline_token():
+    """Retrieve the offline token from environment variables or request headers.
+
+    This function attempts to get the Red Hat OpenShift Cluster Manager (OCM) offline token
+    first from the OFFLINE_TOKEN environment variable, then from the OCM-Offline-Token
+    request header. The token is required for authenticating with the Red Hat assisted
+    installer service.
+
+    Returns:
+        str: The offline token string used for authentication.
+
+    Raises:
+        RuntimeError: If no offline token is found in either environment variables
+            or request headers.
+    """
     token = os.environ.get("OFFLINE_TOKEN")
     if token:
         return token
@@ -19,14 +33,39 @@ def get_offline_token():
 
 @mcp.tool()
 def cluster_info(cluster_id: str) -> str:
-    """Get detailed information about the assisted installer cluster with the given id"""
+    """Get comprehensive information about a specific assisted installer cluster.
+
+    Retrieves detailed cluster information including configuration, status, hosts,
+    network settings, and installation progress for the specified cluster ID.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to retrieve information for.
+            This is typically a UUID string.
+
+    Returns:
+        str: A formatted string containing detailed cluster information including:
+            - Cluster name, ID, and OpenShift version
+            - Installation status and progress
+            - Network configuration (VIPs, subnets)
+            - Host information and roles
+    """
     return InventoryClient(get_offline_token()).get_cluster(cluster_id=cluster_id).to_str()
 
 @mcp.tool()
 def list_clusters() -> str:
-    """
-    Lists all of the current user's assisted installer clusters.
-    Returns only minimal cluster information, use cluster_info to get more detailed information
+    """List all assisted installer clusters for the current user.
+
+    Retrieves a summary of all clusters associated with the current user's account.
+    This provides basic information about each cluster without detailed configuration.
+    Use cluster_info() to get comprehensive details about a specific cluster.
+
+    Returns:
+        str: A JSON-formatted string containing an array of cluster objects.
+            Each cluster object includes:
+            - name (str): The cluster name
+            - id (str): The unique cluster identifier
+            - openshift_version (str): The OpenShift version being installed
+            - status (str): Current cluster status (e.g., 'ready', 'installing', 'error')
     """
     clusters = InventoryClient(get_offline_token()).list_clusters()
     resp = [{"name": cluster["name"], "id": cluster["id"], "openshift_version": cluster["openshift_version"], "status": cluster["status"]} for cluster in clusters]
@@ -34,28 +73,80 @@ def list_clusters() -> str:
 
 @mcp.tool()
 def cluster_events(cluster_id: str) -> str:
-    """Get the events related to a cluster with the given id"""
+    """Get the events related to a cluster with the given cluster id.
+
+    Retrieves chronological events related to cluster installation, configuration
+    changes, and status updates. These events help track installation progress
+    and diagnose issues.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to get events for.
+
+    Returns:
+        str: A JSON-formatted string containing cluster events with timestamps,
+            event types, and descriptive messages about cluster activities.
+    """
     return InventoryClient(get_offline_token()).get_events(cluster_id=cluster_id)
 
 @mcp.tool()
 def host_events(cluster_id: str, host_id: str) -> str:
-    """Get the events related to a host within a cluster"""
+    """Get events specific to a particular host within a cluster.
+
+    Retrieves events related to a specific host's installation progress, hardware
+    validation, role assignment, and any host-specific issues or status changes.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster containing the host.
+        host_id (str): The unique identifier of the specific host to get events for.
+
+    Returns:
+        str: A JSON-formatted string containing host-specific events including
+            hardware validation results, installation steps, and error messages.
+    """
     return InventoryClient(get_offline_token()).get_events(cluster_id=cluster_id, host_id=host_id)
 
 @mcp.tool()
 def infraenv_info(infraenv_id: str) -> str:
-    """
-    Get detailed information about the assisted installer infra env with the given id
-    This will contain data like the ISO download URL as well as infra env metadata
+    """Get detailed information about an infrastructure environment (InfraEnv).
+
+    An InfraEnv contains the configuration and resources needed to boot and discover
+    hosts for cluster installation, including the discovery ISO image and network
+    configuration.
+
+    Args:
+        infraenv_id (str): The unique identifier of the infrastructure environment.
+
+    Returns:
+        str: A formatted string containing comprehensive InfraEnv information including:
+            - ISO download URL for host discovery
+            - Network configuration and proxy settings
+            - SSH public key for host access
+            - Associated cluster information
+            - Static network configuration if applicable
     """
     return InventoryClient(get_offline_token()).get_infra_env(infraenv_id).to_str()
 
 @mcp.tool()
 def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
-    """
-    Create a new assisted installer cluster and infraenv with the given name, openshift version, and base domain.
-    The single_node arg should be set to True only when the user specifically requests a single node cluster or no high availability
-    Returns the created cluster id and infraenv id formatted as json.
+    """Create a new OpenShift cluster and associated infrastructure environment.
+
+    Creates both a cluster definition and an InfraEnv for host discovery. The cluster
+    can be configured for high availability (multi-node) or single-node deployment.
+
+    Args:
+        name (str): The name for the new cluster. Must be unique within your account.
+        version (str): The OpenShift version to install (e.g., "4.18.2", "4.17.1").
+            Use list_versions() to see available versions.
+        base_domain (str): The base DNS domain for the cluster (e.g., "example.com").
+            The cluster will be accessible at api.{name}.{base_domain}.
+        single_node (bool): Whether to create a single-node cluster. Set to True for
+            edge deployments or resource-constrained environments. Set to False for
+            production high-availability clusters with multiple control plane nodes.
+
+    Returns:
+        str: A JSON string containing the created cluster and InfraEnv IDs:
+            - cluster_id (str): The unique identifier of the created cluster
+            - infraenv_id (str): The unique identifier of the created InfraEnv
     """
     client = InventoryClient(get_offline_token())
     cluster = client.create_cluster(name, version, single_node, base_dns_domain=base_domain)
@@ -64,43 +155,113 @@ def create_cluster(name: str, version: str, base_domain: str, single_node: bool)
 
 @mcp.tool()
 def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
-    """
-    Set the API and ingress virtual IP addresses (VIPS) for the assisted installer cluster with the given ID
+    """Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
+
+    Sets the API VIP (for cluster management) and Ingress VIP (for application traffic)
+    for the specified cluster. These VIPs must be available IP addresses within the
+    cluster's network subnet.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to configure.
+        api_vip (str): The IP address for the cluster API endpoint. This is where
+            kubectl and other management tools will connect.
+        ingress_vip (str): The IP address for ingress traffic to applications
+            running in the cluster.
+
+    Returns:
+        str: A formatted string containing the updated cluster configuration
+            showing the newly set VIP addresses.
     """
     return InventoryClient(get_offline_token()).update_cluster(cluster_id, api_vip=api_vip, ingress_vip=ingress_vip).to_str()
 
 @mcp.tool()
 def install_cluster(cluster_id: str) -> str:
-    """
-    Trigger installation for the assisted installer cluster with the given id
+    """Trigger the installation process for a prepared cluster.
+
+    Initiates the OpenShift installation on all discovered and validated hosts.
+    The cluster must have all prerequisites met including sufficient hosts,
+    network configuration, and any required validations.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to install.
+
+    Returns:
+        str: A formatted string containing the cluster status after installation
+            has been triggered, including installation progress information.
+
+    Note:
+        Before calling this function, ensure:
+        - All required hosts are discovered and ready
+        - Network configuration is complete (VIPs set if required)
+        - All cluster validations pass
     """
     return InventoryClient(get_offline_token()).install_cluster(cluster_id).to_str()
 
 @mcp.tool()
 def list_versions() -> str:
-    """
-    Lists the available OpenShift versions for installation with the assisted installer
+    """List all available OpenShift versions for installation.
+
+    Retrieves the complete list of OpenShift versions that can be installed
+    using the assisted installer service, including release versions and
+    pre-release candidates.
+
+    Returns:
+        str: A JSON string containing available OpenShift versions with metadata
+            including version numbers, release dates, and support status.
     """
     return json.dumps(InventoryClient(get_offline_token()).get_openshift_versions(True))
 
 @mcp.tool()
 def list_operator_bundles() -> str:
-    """
-    Lists the operator bundles that can be optionally added to a cluster during installation
+    """List available operator bundles for cluster installation.
+
+    Retrieves operator bundles that can be optionally installed during cluster
+    deployment. These include Red Hat and certified partner operators for
+    various functionalities like storage, networking, and monitoring.
+
+    Returns:
+        str: A JSON string containing available operator bundles with metadata
+            including bundle names, descriptions, and operator details.
     """
     return json.dumps(InventoryClient(get_offline_token()).get_operator_bundles())
 
 @mcp.tool()
 def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
-    """
-    Request an operator bundle to be installed with the given cluster
+    """Add an operator bundle to be installed with the cluster.
+
+    Configures the specified operator bundle to be automatically installed
+    during cluster deployment. The bundle must be from the list of available
+    bundles returned by list_operator_bundles().
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to configure.
+        bundle_name (str): The name of the operator bundle to add. Use
+            list_operator_bundles() to see available bundle names.
+
+    Returns:
+        str: A formatted string containing the updated cluster configuration
+            showing the newly added operator bundle.
     """
     return InventoryClient(get_offline_token()).add_operator_bundle_to_cluster(cluster_id, bundle_name).to_str()
 
 @mcp.tool()
 def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
-    """
-    Update a host to a specific role. The role options are 'auto-assign', 'master', 'arbiter', 'worker'
+    """Assign a specific role to a discovered host in the cluster.
+
+    Sets the role for a host that has been discovered through the InfraEnv boot process.
+    The role determines the host's function in the OpenShift cluster.
+
+    Args:
+        host_id (str): The unique identifier of the host to configure.
+        infraenv_id (str): The unique identifier of the InfraEnv containing the host.
+        role (str): The role to assign to the host. Valid options are:
+            - 'auto-assign': Let the installer automatically determine the role
+            - 'master': Control plane node (API server, etcd, scheduler)
+            - 'worker': Compute node for running application workloads
+
+    Returns:
+        str: A formatted string containing the updated host configuration
+            showing the newly assigned role.
     """
     return InventoryClient(get_offline_token()).update_host(host_id, infraenv_id, host_role=role).to_str()
 
