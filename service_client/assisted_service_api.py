@@ -9,27 +9,15 @@ from retry import retry
 from service_client.logger import log
 
 class InventoryClient(object):
-    def __init__(self, offline_token: str):
+    def __init__(self, access_token: str):
+        self.access_token = access_token
+        self.pull_secret = self._get_pull_secret()
         self.inventory_url = os.environ.get("INVENTORY_URL", "https://api.openshift.com/api/assisted-install/v2")
-        self.offline_token = offline_token
-        self.access_token = self._get_access_token(self.offline_token)
-        self.pull_secret = self._get_pull_secret(self.access_token)
         self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
 
-    def _get_access_token(self, offline_token: str) -> str:
-        params = {
-            "client_id": "cloud-services",
-            "grant_type": "refresh_token",
-            "refresh_token": offline_token,
-        }
-        sso_url = os.environ.get("SSO_URL", "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token")
-        response = requests.post(sso_url, data=params)
-        response.raise_for_status()
-        return response.json()["access_token"]
-
-    def _get_pull_secret(self, access_token: str) -> str:
+    def _get_pull_secret(self) -> str:
         url = os.environ.get("PULL_SECRET_URL", "https://api.openshift.com/api/accounts_mgmt/v1/access_token")
-        headers = {"Authorization": f"Bearer {access_token}"}
+        headers = {"Authorization": f"Bearer {self.access_token}"}
         response = requests.post(url, headers=headers)
         response.raise_for_status()
         return response.text
