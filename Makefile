@@ -16,3 +16,23 @@ run:
 .PHONY: run-local
 run-local:
 	uv run server.py
+
+black:
+	uv run black --check .
+
+pylint:
+	uv run pylint .
+
+pyright:
+	uv run pyright .
+
+docstyle:
+	uv run pydocstyle -v .
+
+ruff:
+	uv run ruff check .
+
+check-types:
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined .
+
+verify: black pylint pyright docstyle ruff check-types
