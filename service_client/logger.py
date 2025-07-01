@@ -3,13 +3,7 @@ import logging
 import os
 import re
 import sys
-import traceback
-from contextlib import suppress
 from enum import Enum
-from types import TracebackType
-from typing import Type
-
-
 class SensitiveFormatter(logging.Formatter):
     """Formatter that removes sensitive info."""
 
@@ -167,23 +161,3 @@ add_log_file_handler(log, "assisted-service-mcp.log")
 add_log_file_handler(urllib3_logger, "assisted-service-mcp.log")
 add_stream_handler(log)
 add_stream_handler(urllib3_logger)
-
-
-class SuppressAndLog(suppress):
-    def __exit__(
-        self, exctype: Type[Exception], excinst: Exception, exctb: TracebackType
-    ):
-        res = super().__exit__(exctype, excinst, exctb)
-
-        if res:
-            with suppress(BaseException):
-                tb_data = traceback.extract_tb(exctb, 1)[0]
-                log.warning(
-                    "Suppressed %s from %s:%s : %s",
-                    exctype.__name__,
-                    tb_data.name,
-                    tb_data.lineno,
-                    excinst,
-                )
-
-        return res
