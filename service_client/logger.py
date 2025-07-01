@@ -18,14 +18,30 @@ class SensitiveFormatter(logging.Formatter):
         # Dict filter
         s = re.sub(r"('_pull_secret':\s+)'(.*?)'", r"\g<1>'*** PULL_SECRET ***'", s)
         s = re.sub(r"('_ssh_public_key':\s+)'(.*?)'", r"\g<1>'*** SSH_KEY ***'", s)
-        s = re.sub(r"('_vsphere_username':\s+)'(.*?)'", r"\g<1>'*** VSPHERE_USER ***'", s)
-        s = re.sub(r"('_vsphere_password':\s+)'(.*?)'", r"\g<1>'*** VSPHERE_PASSWORD ***'", s)
+        s = re.sub(
+            r"('_vsphere_username':\s+)'(.*?)'", r"\g<1>'*** VSPHERE_USER ***'", s
+        )
+        s = re.sub(
+            r"('_vsphere_password':\s+)'(.*?)'", r"\g<1>'*** VSPHERE_PASSWORD ***'", s
+        )
 
         # Object filter
-        s = re.sub(r"(pull_secret='[^']*(?=')')", "pull_secret = *** PULL_SECRET ***", s)
-        s = re.sub(r"(ssh_public_key='[^']*(?=')')", "ssh_public_key = *** SSH_KEY ***", s)
-        s = re.sub(r"(vsphere_username='[^']*(?=')')", "vsphere_username = *** VSPHERE_USER ***", s)
-        s = re.sub(r"(vsphere_password='[^']*(?=')')", "vsphere_password = *** VSPHERE_PASSWORD ***", s)
+        s = re.sub(
+            r"(pull_secret='[^']*(?=')')", "pull_secret = *** PULL_SECRET ***", s
+        )
+        s = re.sub(
+            r"(ssh_public_key='[^']*(?=')')", "ssh_public_key = *** SSH_KEY ***", s
+        )
+        s = re.sub(
+            r"(vsphere_username='[^']*(?=')')",
+            "vsphere_username = *** VSPHERE_USER ***",
+            s,
+        )
+        s = re.sub(
+            r"(vsphere_password='[^']*(?=')')",
+            "vsphere_password = *** VSPHERE_PASSWORD ***",
+            s,
+        )
 
         return s
 
@@ -129,7 +145,8 @@ def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileH
 
 def add_stream_handler(logger: logging.Logger):
     fmt = SensitiveFormatter(
-        "%(asctime)s  %(name)s %(levelname)-10s - %(thread)d - %(message)s \t" "(%(pathname)s:%(lineno)d)->%(funcName)s"
+        "%(asctime)s  %(name)s %(levelname)-10s - %(thread)d - %(message)s \t"
+        "(%(pathname)s:%(lineno)d)->%(funcName)s"
     )
     ch = ColorizingStreamHandler(sys.stderr)
     ch.setFormatter(fmt)
@@ -153,12 +170,16 @@ add_stream_handler(urllib3_logger)
 
 
 class SuppressAndLog(suppress):
-    def __exit__(self, exctype: Type[Exception], excinst: Exception, exctb: TracebackType):
+    def __exit__(
+        self, exctype: Type[Exception], excinst: Exception, exctb: TracebackType
+    ):
         res = super().__exit__(exctype, excinst, exctb)
 
         if res:
             with suppress(BaseException):
                 tb_data = traceback.extract_tb(exctb, 1)[0]
-                log.warning(f"Suppressed {exctype.__name__} from {tb_data.name}:{tb_data.lineno} : {excinst}")
+                log.warning(
+                    f"Suppressed {exctype.__name__} from {tb_data.name}:{tb_data.lineno} : {excinst}"
+                )
 
         return res

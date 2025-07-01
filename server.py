@@ -7,6 +7,7 @@ from service_client import InventoryClient
 
 mcp = FastMCP("AssistedService", host="0.0.0.0")
 
+
 def get_offline_token() -> str:
     """Retrieve the offline token from environment variables or request headers.
 
@@ -31,6 +32,7 @@ def get_offline_token() -> str:
         return token
 
     raise RuntimeError("No offline token found in environment or request headers")
+
 
 def get_access_token() -> str:
     """Retrieve the access token.
@@ -60,10 +62,14 @@ def get_access_token() -> str:
         "grant_type": "refresh_token",
         "refresh_token": get_offline_token(),
     }
-    sso_url = os.environ.get("SSO_URL", "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token")
+    sso_url = os.environ.get(
+        "SSO_URL",
+        "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
+    )
     response = requests.post(sso_url, data=params)
     response.raise_for_status()
     return response.json()["access_token"]
+
 
 @mcp.tool()
 async def cluster_info(cluster_id: str) -> str:
@@ -87,6 +93,7 @@ async def cluster_info(cluster_id: str) -> str:
     result = await client.get_cluster(cluster_id=cluster_id)
     return result.to_str()
 
+
 @mcp.tool()
 async def list_clusters() -> str:
     """List all assisted installer clusters for the current user.
@@ -105,8 +112,17 @@ async def list_clusters() -> str:
     """
     client = InventoryClient(get_access_token())
     clusters = await client.list_clusters()
-    resp = [{"name": cluster["name"], "id": cluster["id"], "openshift_version": cluster["openshift_version"], "status": cluster["status"]} for cluster in clusters]
+    resp = [
+        {
+            "name": cluster["name"],
+            "id": cluster["id"],
+            "openshift_version": cluster["openshift_version"],
+            "status": cluster["status"],
+        }
+        for cluster in clusters
+    ]
     return json.dumps(resp)
+
 
 @mcp.tool()
 async def cluster_events(cluster_id: str) -> str:
@@ -126,6 +142,7 @@ async def cluster_events(cluster_id: str) -> str:
     client = InventoryClient(get_access_token())
     return await client.get_events(cluster_id=cluster_id)
 
+
 @mcp.tool()
 async def host_events(cluster_id: str, host_id: str) -> str:
     """Get events specific to a particular host within a cluster.
@@ -143,6 +160,7 @@ async def host_events(cluster_id: str, host_id: str) -> str:
     """
     client = InventoryClient(get_access_token())
     return await client.get_events(cluster_id=cluster_id, host_id=host_id)
+
 
 @mcp.tool()
 async def infraenv_info(infraenv_id: str) -> str:
@@ -167,8 +185,11 @@ async def infraenv_info(infraenv_id: str) -> str:
     result = await client.get_infra_env(infraenv_id)
     return result.to_str()
 
+
 @mcp.tool()
-async def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
+async def create_cluster(
+    name: str, version: str, base_domain: str, single_node: bool
+) -> str:
     """Create a new OpenShift cluster and associated infrastructure environment.
 
     Creates both a cluster definition and an InfraEnv for host discovery. The cluster
@@ -191,9 +212,14 @@ async def create_cluster(name: str, version: str, base_domain: str, single_node:
     """
     client = InventoryClient(get_access_token())
     mcp_tags = {"created-by": "mcp"}
-    cluster = await client.create_cluster(name, version, single_node, base_dns_domain=base_domain, tags=mcp_tags)
-    infraenv = await client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
-    return json.dumps({'cluster_id': cluster.id, 'infraenv_id': infraenv.id})
+    cluster = await client.create_cluster(
+        name, version, single_node, base_dns_domain=base_domain, tags=mcp_tags
+    )
+    infraenv = await client.create_infra_env(
+        name, cluster_id=cluster.id, openshift_version=cluster.openshift_version
+    )
+    return json.dumps({"cluster_id": cluster.id, "infraenv_id": infraenv.id})
+
 
 @mcp.tool()
 async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
@@ -215,8 +241,11 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
             showing the newly set VIP addresses.
     """
     client = InventoryClient(get_access_token())
-    result = await client.update_cluster(cluster_id, api_vip=api_vip, ingress_vip=ingress_vip)
+    result = await client.update_cluster(
+        cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
+    )
     return result.to_str()
+
 
 @mcp.tool()
 async def install_cluster(cluster_id: str) -> str:
@@ -243,6 +272,7 @@ async def install_cluster(cluster_id: str) -> str:
     result = await client.install_cluster(cluster_id)
     return result.to_str()
 
+
 @mcp.tool()
 async def list_versions() -> str:
     """List all available OpenShift versions for installation.
@@ -259,6 +289,7 @@ async def list_versions() -> str:
     result = await client.get_openshift_versions(True)
     return json.dumps(result)
 
+
 @mcp.tool()
 async def list_operator_bundles() -> str:
     """List available operator bundles for cluster installation.
@@ -274,6 +305,7 @@ async def list_operator_bundles() -> str:
     client = InventoryClient(get_access_token())
     result = await client.get_operator_bundles()
     return json.dumps(result)
+
 
 @mcp.tool()
 async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
@@ -295,6 +327,7 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
     client = InventoryClient(get_access_token())
     result = await client.add_operator_bundle_to_cluster(cluster_id, bundle_name)
     return result.to_str()
+
 
 @mcp.tool()
 async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
@@ -318,6 +351,7 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     client = InventoryClient(get_access_token())
     result = await client.update_host(host_id, infraenv_id, host_role=role)
     return result.to_str()
+
 
 if __name__ == "__main__":
     mcp.run(transport="sse")
