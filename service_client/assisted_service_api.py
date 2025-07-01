@@ -18,7 +18,8 @@ from service_client.logger import log
 
 
 class InventoryClient:
-    """Client for interacting with Red Hat Assisted Service API.
+    """
+    Client for interacting with Red Hat Assisted Service API.
 
     This class provides methods to manage OpenShift clusters, infrastructure
     environments, hosts, and installation workflows through the Red Hat
@@ -49,7 +50,7 @@ class InventoryClient:
 
     def _get_client(self):
         configs = Configuration()
-        configs.host = self.get_host(configs)
+        configs.host = self._get_host(configs)
         configs.debug = self.client_debug
         configs.api_key_prefix["Authorization"] = "Bearer"
         configs.api_key["Authorization"] = self.access_token
@@ -71,7 +72,7 @@ class InventoryClient:
         api_client = self._get_client()
         return api.VersionsApi(api_client=api_client)
 
-    def get_host(self, configs: Configuration) -> str:
+    def _get_host(self, configs: Configuration) -> str:
         parsed_host = urlparse(configs.host)
         parsed_inventory_url = urlparse(self.inventory_url)
         return parsed_host._replace(
@@ -81,6 +82,16 @@ class InventoryClient:
     async def get_cluster(
         self, cluster_id: str, get_unregistered_clusters: bool = False
     ) -> models.Cluster:
+        """
+        Get cluster information by ID.
+
+        Args:
+            cluster_id: The unique identifier of the cluster.
+            get_unregistered_clusters: Whether to include unregistered clusters.
+
+        Returns:
+            models.Cluster: The cluster object containing cluster information.
+        """
         return cast(
             models.Cluster,
             await asyncio.to_thread(
@@ -91,6 +102,12 @@ class InventoryClient:
         )
 
     async def list_clusters(self) -> list:
+        """
+        List all clusters accessible to the authenticated user.
+
+        Returns:
+            list: A list of cluster objects.
+        """
         return cast(
             list, await asyncio.to_thread(self._installer_api().v2_list_clusters)
         )
@@ -103,6 +120,19 @@ class InventoryClient:
         categories=None,
         **kwargs,
     ) -> str:
+        """
+        Get events for clusters, hosts, or infrastructure environments.
+
+        Args:
+            cluster_id: Optional cluster ID to filter events.
+            host_id: Optional host ID to filter events.
+            infra_env_id: Optional infrastructure environment ID to filter events.
+            categories: List of event categories to filter. Defaults to ["user"].
+            **kwargs: Additional parameters for the API call.
+
+        Returns:
+            str: Raw event data as a json string.
+        """
         if categories is None:
             categories = ["user"]
         log.info(
@@ -124,6 +154,15 @@ class InventoryClient:
         return cast(Any, response).data
 
     async def get_infra_env(self, infra_env_id: str) -> models.InfraEnv:
+        """
+        Get infrastructure environment information by ID.
+
+        Args:
+            infra_env_id: The unique identifier of the infrastructure environment.
+
+        Returns:
+            models.InfraEnv: The infrastructure environment object.
+        """
         return cast(
             models.InfraEnv,
             await asyncio.to_thread(
@@ -134,6 +173,18 @@ class InventoryClient:
     async def create_cluster(
         self, name: str, version: str, single_node: bool, **cluster_params
     ) -> models.Cluster:
+        """
+        Create a new OpenShift cluster.
+
+        Args:
+            name: The name of the cluster.
+            version: The OpenShift version to install.
+            single_node: Whether to create a single-node cluster.
+            **cluster_params: Additional cluster configuration parameters.
+
+        Returns:
+            models.Cluster: The created cluster object.
+        """
         if single_node:
             cluster_params["control_plane_count"] = 1
             cluster_params["high_availability_mode"] = "None"
@@ -152,6 +203,16 @@ class InventoryClient:
         return cast(models.Cluster, result)
 
     async def create_infra_env(self, name: str, **infra_env_params) -> models.InfraEnv:
+        """
+        Create a new infrastructure environment.
+
+        Args:
+            name: The name of the infrastructure environment.
+            **infra_env_params: Additional infrastructure environment parameters.
+
+        Returns:
+            models.InfraEnv: The created infrastructure environment object.
+        """
         infra_env = models.InfraEnvCreateParams(
             name=name, pull_secret=self.pull_secret, **infra_env_params
         )
@@ -168,6 +229,18 @@ class InventoryClient:
         ingress_vip: Optional[str] = "",
         **update_params,
     ) -> models.Cluster:
+        """
+        Update cluster configuration.
+
+        Args:
+            cluster_id: The unique identifier of the cluster to update.
+            api_vip: Optional API virtual IP address.
+            ingress_vip: Optional ingress virtual IP address.
+            **update_params: Additional cluster update parameters.
+
+        Returns:
+            models.Cluster: The updated cluster object.
+        """
         params = models.V2ClusterUpdateParams(**update_params)
         if api_vip != "":
             params.api_vips = [models.ApiVip(cluster_id=cluster_id, ip=api_vip)]
@@ -187,6 +260,15 @@ class InventoryClient:
         )
 
     async def install_cluster(self, cluster_id: str) -> models.Cluster:
+        """
+        Start the installation process for a cluster.
+
+        Args:
+            cluster_id: The unique identifier of the cluster to install.
+
+        Returns:
+            models.Cluster: The cluster object with updated installation status.
+        """
         log.info("Installing cluster %s", cluster_id)
         return cast(
             models.Cluster,
@@ -198,6 +280,15 @@ class InventoryClient:
     async def get_openshift_versions(
         self, only_latest: bool
     ) -> models.OpenshiftVersions:
+        """
+        Get supported OpenShift versions.
+
+        Args:
+            only_latest: Whether to return only the latest versions.
+
+        Returns:
+            models.OpenshiftVersions: Object containing available OpenShift versions.
+        """
         return cast(
             models.OpenshiftVersions,
             await asyncio.to_thread(
@@ -207,6 +298,12 @@ class InventoryClient:
         )
 
     async def get_operator_bundles(self):
+        """
+        Get available operator bundles.
+
+        Returns:
+            list: A list of operator bundle dictionaries.
+        """
         bundles = cast(
             list, await asyncio.to_thread(self._operators_api().v2_list_bundles)
         )
@@ -215,6 +312,16 @@ class InventoryClient:
     async def add_operator_bundle_to_cluster(
         self, cluster_id: str, bundle_name: str
     ) -> models.Cluster:
+        """
+        Add an operator bundle to a cluster.
+
+        Args:
+            cluster_id: The unique identifier of the cluster.
+            bundle_name: The name of the operator bundle to add.
+
+        Returns:
+            models.Cluster: The updated cluster object with the new operator.
+        """
         bundle = cast(
             Any,
             await asyncio.to_thread(self._operators_api().v2_get_bundle, bundle_name),
@@ -229,6 +336,17 @@ class InventoryClient:
     async def update_host(
         self, host_id: str, infra_env_id: str, **update_params
     ) -> models.Host:
+        """
+        Update host configuration within an infrastructure environment.
+
+        Args:
+            host_id: The unique identifier of the host to update.
+            infra_env_id: The infrastructure environment ID containing the host.
+            **update_params: Host update parameters.
+
+        Returns:
+            models.Host: The updated host object.
+        """
         params = models.HostUpdateParams(**update_params)
         return cast(
             models.Host,

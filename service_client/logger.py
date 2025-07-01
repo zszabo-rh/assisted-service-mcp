@@ -1,3 +1,11 @@
+"""
+Logging utilities with sensitive information filtering.
+
+This module provides logging configuration and formatting utilities that
+automatically filter sensitive information like pull secrets, SSH keys,
+and vSphere credentials from log messages.
+"""
+
 # -*- coding: utf-8 -*-
 import logging
 import os
@@ -41,13 +49,28 @@ class SensitiveFormatter(logging.Formatter):
         return s
 
     def format(self, record):
+        """
+        Format log record while filtering sensitive information.
+
+        Args:
+            record: The LogRecord instance to be formatted.
+
+        Returns:
+            str: The formatted log message with sensitive info redacted.
+        """
         original = logging.Formatter.format(self, record)
         return self._filter(original)
 
 
 def get_logging_level():
+    """
+    Get the logging level from environment variable.
+
+    Returns:
+        int: The logging level (defaults to INFO if not set or invalid).
+    """
     level = os.environ.get("LOGGING_LEVEL", "")
-    return logging.getLevelName(level.upper()) if level else logging.INFO
+    return getattr(logging, level.upper(), logging.INFO) if level else logging.INFO
 
 
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -56,6 +79,16 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 
 
 def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileHandler:
+    """
+    Add a file handler to the logger with sensitive information filtering.
+
+    Args:
+        logger: The logger instance to add the handler to.
+        filename: The path to the log file.
+
+    Returns:
+        logging.FileHandler: The created file handler.
+    """
     fmt = SensitiveFormatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(thread)d:%(process)d - %(message)s"
     )
@@ -66,6 +99,12 @@ def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileH
 
 
 def add_stream_handler(logger: logging.Logger):
+    """
+    Add a stream handler to the logger with sensitive information filtering.
+
+    Args:
+        logger: The logger instance to add the handler to.
+    """
     fmt = SensitiveFormatter(
         "%(asctime)s  %(name)s %(levelname)-10s - %(thread)d - %(message)s \t"
         "(%(pathname)s:%(lineno)d)->%(funcName)s"
