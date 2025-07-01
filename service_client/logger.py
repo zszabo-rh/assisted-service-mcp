@@ -4,6 +4,8 @@ import os
 import re
 import sys
 from enum import Enum
+
+
 class SensitiveFormatter(logging.Formatter):
     """Formatter that removes sensitive info."""
 

@@ -8,7 +8,7 @@ environments, and host management.
 
 import os
 import asyncio
-from typing import Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import requests
@@ -81,14 +81,19 @@ class InventoryClient:
     async def get_cluster(
         self, cluster_id: str, get_unregistered_clusters: bool = False
     ) -> models.Cluster:
-        return await asyncio.to_thread(
-            self._installer_api().v2_get_cluster,
-            cluster_id=cluster_id,
-            get_unregistered_clusters=get_unregistered_clusters,
+        return cast(
+            models.Cluster,
+            await asyncio.to_thread(
+                self._installer_api().v2_get_cluster,
+                cluster_id=cluster_id,
+                get_unregistered_clusters=get_unregistered_clusters,
+            ),
         )
 
     async def list_clusters(self) -> list:
-        return await asyncio.to_thread(self._installer_api().v2_list_clusters)
+        return cast(
+            list, await asyncio.to_thread(self._installer_api().v2_list_clusters)
+        )
 
     async def get_events(
         self,
@@ -116,11 +121,14 @@ class InventoryClient:
             _preload_content=False,
             **kwargs,
         )
-        return response.data
+        return cast(Any, response).data
 
     async def get_infra_env(self, infra_env_id: str) -> models.InfraEnv:
-        return await asyncio.to_thread(
-            self._installer_api().get_infra_env, infra_env_id=infra_env_id
+        return cast(
+            models.InfraEnv,
+            await asyncio.to_thread(
+                self._installer_api().get_infra_env, infra_env_id=infra_env_id
+            ),
         )
 
     async def create_cluster(
@@ -141,7 +149,7 @@ class InventoryClient:
         result = await asyncio.to_thread(
             self._installer_api().v2_register_cluster, new_cluster_params=params
         )
-        return result
+        return cast(models.Cluster, result)
 
     async def create_infra_env(self, name: str, **infra_env_params) -> models.InfraEnv:
         infra_env = models.InfraEnvCreateParams(
@@ -151,7 +159,7 @@ class InventoryClient:
         result = await asyncio.to_thread(
             self._installer_api().register_infra_env, infraenv_create_params=infra_env
         )
-        return result
+        return cast(models.InfraEnv, result)
 
     async def update_cluster(
         self,
@@ -169,35 +177,47 @@ class InventoryClient:
             ]
 
         log.info("Updating cluster %s with params %s", cluster_id, params)
-        return await asyncio.to_thread(
-            self._installer_api().v2_update_cluster,
-            cluster_id=cluster_id,
-            cluster_update_params=params,
+        return cast(
+            models.Cluster,
+            await asyncio.to_thread(
+                self._installer_api().v2_update_cluster,
+                cluster_id=cluster_id,
+                cluster_update_params=params,
+            ),
         )
 
     async def install_cluster(self, cluster_id: str) -> models.Cluster:
         log.info("Installing cluster %s", cluster_id)
-        return await asyncio.to_thread(
-            self._installer_api().v2_install_cluster, cluster_id=cluster_id
+        return cast(
+            models.Cluster,
+            await asyncio.to_thread(
+                self._installer_api().v2_install_cluster, cluster_id=cluster_id
+            ),
         )
 
     async def get_openshift_versions(
         self, only_latest: bool
     ) -> models.OpenshiftVersions:
-        return await asyncio.to_thread(
-            self._versions_api().v2_list_supported_openshift_versions,
-            only_latest=only_latest,
+        return cast(
+            models.OpenshiftVersions,
+            await asyncio.to_thread(
+                self._versions_api().v2_list_supported_openshift_versions,
+                only_latest=only_latest,
+            ),
         )
 
     async def get_operator_bundles(self):
-        bundles = await asyncio.to_thread(self._operators_api().v2_list_bundles)
+        bundles = cast(
+            list, await asyncio.to_thread(self._operators_api().v2_list_bundles)
+        )
         return [bundle.to_dict() for bundle in bundles]
 
     async def add_operator_bundle_to_cluster(
         self, cluster_id: str, bundle_name: str
     ) -> models.Cluster:
-        bundle = await asyncio.to_thread(
-            self._operators_api().v2_get_bundle, bundle_name
+        bundle = cast(
+            Any,
+            await asyncio.to_thread(self._operators_api().v2_get_bundle, bundle_name),
         )
         olm_operators = [
             models.OperatorCreateParams(name=op_name) for op_name in bundle.operators
@@ -210,6 +230,9 @@ class InventoryClient:
         self, host_id: str, infra_env_id: str, **update_params
     ) -> models.Host:
         params = models.HostUpdateParams(**update_params)
-        return await asyncio.to_thread(
-            self._installer_api().v2_update_host, infra_env_id, host_id, params
+        return cast(
+            models.Host,
+            await asyncio.to_thread(
+                self._installer_api().v2_update_host, infra_env_id, host_id, params
+            ),
         )
