@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import sys
-from enum import Enum
 
 
 class SensitiveFormatter(logging.Formatter):
@@ -46,79 +45,6 @@ class SensitiveFormatter(logging.Formatter):
         return self._filter(original)
 
 
-class Color(Enum):
-    BLUE = "\033[0;34m"
-    LIGHT_RED = "\033[1;31m"
-    LIGHT_YELLOW = "\033[1;33m"
-    LIGHT_BLUE = "\033[1;34m"
-    LIGHT_PURPLE = "\033[1;35m"
-    LIGHT_CYAN = "\033[1;36m"
-    WHITE = "\033[1;37m"
-    RESET = "\033[0m"
-
-
-ColorLevel = {
-    logging.DEBUG: Color.BLUE.value,
-    logging.INFO: Color.RESET.value,
-    logging.WARNING: Color.LIGHT_YELLOW.value,
-    logging.ERROR: Color.LIGHT_RED.value,
-    logging.CRITICAL: Color.LIGHT_PURPLE.value,
-}
-
-
-class ColorizingFileHandler(logging.FileHandler):
-    def emit(self, record):
-        if self.stream is None:
-            if self.mode != "w" or not self._closed:
-                self.stream = self._open()
-        if self.stream:
-            ColorizingStreamHandler.emit(self, record)
-
-    @property
-    def is_tty(self):
-        return True
-
-
-class ColorizingStreamHandler(logging.StreamHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def is_tty(self):
-        isatty = getattr(self.stream, "isatty", None)
-        return isatty and isatty()  # pylint: disable=not-callable
-
-    def emit(self, record):
-        try:
-            message = self.format(record)
-            stream = self.stream
-            if not self.is_tty:
-                stream.write(message)
-            else:
-                message = ColorLevel[record.levelno] + message + Color.RESET.value
-                stream.write(message)
-            stream.write(getattr(self, "terminator", "\n"))
-            self.flush()
-        except Exception:
-            self.handleError(record)
-
-
-def add_log_record(test_id):
-    # Adding log record for testcase id
-    _former_log_record_factory = logging.getLogRecordFactory()
-
-    def log_record_uuid_injector(*args, **kwargs):
-        record = _former_log_record_factory(*args, **kwargs)
-        record.test_id = test_id
-        return record
-
-    logging.setLogRecordFactory(log_record_uuid_injector)
-
-
-# set test_id record to "" empty by default
-add_log_record("")
-
-
 def get_logging_level():
     level = os.environ.get("LOGGING_LEVEL", "")
     return logging.getLevelName(level.upper()) if level else logging.INFO
@@ -131,9 +57,9 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 
 def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileHandler:
     fmt = SensitiveFormatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(test_id)s:%(thread)d:%(process)d - %(message)s"
+        "%(asctime)s - %(name)s - %(levelname)s - %(thread)d:%(process)d - %(message)s"
     )
-    fh = ColorizingFileHandler(filename)
+    fh = logging.FileHandler(filename)
     fh.setFormatter(fmt)
     logger.addHandler(fh)
     return fh
@@ -144,7 +70,7 @@ def add_stream_handler(logger: logging.Logger):
         "%(asctime)s  %(name)s %(levelname)-10s - %(thread)d - %(message)s \t"
         "(%(pathname)s:%(lineno)d)->%(funcName)s"
     )
-    ch = ColorizingStreamHandler(sys.stderr)
+    ch = logging.StreamHandler(sys.stderr)
     ch.setFormatter(fmt)
     logger.addHandler(ch)
 
