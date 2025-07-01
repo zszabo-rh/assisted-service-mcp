@@ -21,3 +21,24 @@ dev = [
     "pyright>=1.1.402",
     "ruff>=0.12.1",
 ]
+
+[tool.pylint.main]
+ignore-paths = [
+    ".venv",
+    "venv",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "build",
+    "dist",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",  # We'll add these selectively
+    "missing-class-docstring",   # We'll add these selectively
+    "missing-function-docstring", # We'll add these selectively
+    "too-few-public-methods",    # Common in utility classes
+    "line-too-long",            # Handled by black
+    "broad-exception-caught",   # Sometimes necessary
+]

@@ -90,7 +90,7 @@ class ColorizingStreamHandler(logging.StreamHandler):
     @property
     def is_tty(self):
         isatty = getattr(self.stream, "isatty", None)
-        return isatty and isatty()
+        return isatty and isatty()  # pylint: disable=not-callable
 
     def emit(self, record):
         try:
@@ -179,7 +179,11 @@ class SuppressAndLog(suppress):
             with suppress(BaseException):
                 tb_data = traceback.extract_tb(exctb, 1)[0]
                 log.warning(
-                    f"Suppressed {exctype.__name__} from {tb_data.name}:{tb_data.lineno} : {excinst}"
+                    "Suppressed %s from %s:%s : %s",
+                    exctype.__name__,
+                    tb_data.name,
+                    tb_data.lineno,
+                    excinst,
                 )
 
         return res

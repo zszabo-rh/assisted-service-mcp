@@ -1,3 +1,11 @@
+"""
+Client for Red Hat Assisted Service API.
+
+This module provides the InventoryClient class for interacting with Red Hat's
+Assisted Service API to manage OpenShift cluster installations, infrastructure
+environments, and host management.
+"""
+
 import os
 import asyncio
 from typing import Optional
@@ -5,13 +13,23 @@ from urllib.parse import urlparse
 
 import requests
 from assisted_service_client import ApiClient, Configuration, api, models
-from retry import retry
 
 from service_client.logger import log
 
 
-class InventoryClient(object):
+class InventoryClient:
+    """Client for interacting with Red Hat Assisted Service API.
+
+    This class provides methods to manage OpenShift clusters, infrastructure
+    environments, hosts, and installation workflows through the Red Hat
+    Assisted Service API.
+
+    Args:
+        access_token (str): The access token for authenticating with the API.
+    """
+
     def __init__(self, access_token: str):
+        """Initialize the InventoryClient with an access token."""
         self.access_token = access_token
         self.pull_secret = self._get_pull_secret()
         self.inventory_url = os.environ.get(
@@ -25,7 +43,7 @@ class InventoryClient(object):
             "https://api.openshift.com/api/accounts_mgmt/v1/access_token",
         )
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.post(url, headers=headers)
+        response = requests.post(url, headers=headers, timeout=30)
         response.raise_for_status()
         return response.text
 

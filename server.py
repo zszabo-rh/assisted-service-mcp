@@ -1,7 +1,15 @@
-from mcp.server.fastmcp import FastMCP
+"""
+MCP server for Red Hat Assisted Service API.
+
+This module provides Model Context Protocol (MCP) tools for interacting with
+Red Hat's Assisted Service API to manage OpenShift cluster installations.
+"""
+
 import json
 import os
+
 import requests
+from mcp.server.fastmcp import FastMCP
 
 from service_client import InventoryClient
 
@@ -66,7 +74,7 @@ def get_access_token() -> str:
         "SSO_URL",
         "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
     )
-    response = requests.post(sso_url, data=params)
+    response = requests.post(sso_url, data=params, timeout=30)
     response.raise_for_status()
     return response.json()["access_token"]
 
