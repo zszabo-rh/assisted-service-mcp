@@ -17,6 +17,7 @@ run:
 run-local:
 	uv run server.py
 
+.PHONY: black pylint pyright docstyle ruff check-types verify format
 black:
 	uv run black --check .
 
