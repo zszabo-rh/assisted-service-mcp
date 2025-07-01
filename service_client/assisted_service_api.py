@@ -48,7 +48,7 @@ class InventoryClient:
         response.raise_for_status()
         return response.text
 
-    def _get_client(self):
+    def _get_client(self) -> ApiClient:
         configs = Configuration()
         configs.host = self._get_host(configs)
         configs.debug = self.client_debug
@@ -56,19 +56,19 @@ class InventoryClient:
         configs.api_key["Authorization"] = self.access_token
         return ApiClient(configuration=configs)
 
-    def _installer_api(self):
+    def _installer_api(self) -> api.InstallerApi:
         api_client = self._get_client()
         return api.InstallerApi(api_client=api_client)
 
-    def _events_api(self):
+    def _events_api(self) -> api.EventsApi:
         api_client = self._get_client()
         return api.EventsApi(api_client=api_client)
 
-    def _operators_api(self):
+    def _operators_api(self) -> api.OperatorsApi:
         api_client = self._get_client()
         return api.OperatorsApi(api_client=api_client)
 
-    def _versions_api(self):
+    def _versions_api(self) -> api.VersionsApi:
         api_client = self._get_client()
         return api.VersionsApi(api_client=api_client)
 
@@ -117,8 +117,8 @@ class InventoryClient:
         cluster_id: Optional[str] = "",
         host_id: Optional[str] = "",
         infra_env_id: Optional[str] = "",
-        categories=None,
-        **kwargs,
+        categories: Optional[list[str]] = None,
+        **kwargs: Any,
     ) -> str:
         """
         Get events for clusters, hosts, or infrastructure environments.
@@ -171,7 +171,7 @@ class InventoryClient:
         )
 
     async def create_cluster(
-        self, name: str, version: str, single_node: bool, **cluster_params
+        self, name: str, version: str, single_node: bool, **cluster_params: Any
     ) -> models.Cluster:
         """
         Create a new OpenShift cluster.
@@ -202,7 +202,9 @@ class InventoryClient:
         )
         return cast(models.Cluster, result)
 
-    async def create_infra_env(self, name: str, **infra_env_params) -> models.InfraEnv:
+    async def create_infra_env(
+        self, name: str, **infra_env_params: Any
+    ) -> models.InfraEnv:
         """
         Create a new infrastructure environment.
 
@@ -227,7 +229,7 @@ class InventoryClient:
         cluster_id: str,
         api_vip: Optional[str] = "",
         ingress_vip: Optional[str] = "",
-        **update_params,
+        **update_params: Any,
     ) -> models.Cluster:
         """
         Update cluster configuration.
@@ -297,7 +299,7 @@ class InventoryClient:
             ),
         )
 
-    async def get_operator_bundles(self):
+    async def get_operator_bundles(self) -> list[dict[str, Any]]:
         """
         Get available operator bundles.
 
@@ -334,7 +336,7 @@ class InventoryClient:
         )
 
     async def update_host(
-        self, host_id: str, infra_env_id: str, **update_params
+        self, host_id: str, infra_env_id: str, **update_params: Any
     ) -> models.Host:
         """
         Update host configuration within an infrastructure environment.

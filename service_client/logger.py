@@ -17,7 +17,7 @@ class SensitiveFormatter(logging.Formatter):
     """Formatter that removes sensitive info."""
 
     @staticmethod
-    def _filter(s):
+    def _filter(s: str) -> str:
         # Dict filter
         s = re.sub(r"('_pull_secret':\s+)'(.*?)'", r"\g<1>'*** PULL_SECRET ***'", s)
         s = re.sub(r"('_ssh_public_key':\s+)'(.*?)'", r"\g<1>'*** SSH_KEY ***'", s)
@@ -48,7 +48,7 @@ class SensitiveFormatter(logging.Formatter):
 
         return s
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         """
         Format log record while filtering sensitive information.
 
@@ -62,7 +62,7 @@ class SensitiveFormatter(logging.Formatter):
         return self._filter(original)
 
 
-def get_logging_level():
+def get_logging_level() -> int:
     """
     Get the logging level from environment variable.
 
@@ -98,7 +98,7 @@ def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileH
     return fh
 
 
-def add_stream_handler(logger: logging.Logger):
+def add_stream_handler(logger: logging.Logger) -> None:
     """
     Add a stream handler to the logger with sensitive information filtering.
 
