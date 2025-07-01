@@ -35,9 +35,11 @@ def get_offline_token() -> str:
     if token:
         return token
 
-    token = mcp.get_context().request_context.request.headers.get("OCM-Offline-Token")
-    if token:
-        return token
+    request = mcp.get_context().request_context.request
+    if request is not None:
+        token = request.headers.get("OCM-Offline-Token")
+        if token:
+            return token
 
     raise RuntimeError("No offline token found in environment or request headers")
 
