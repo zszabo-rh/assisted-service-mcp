@@ -17,6 +17,19 @@ run:
 run-local:
 	uv run server.py
 
+.PHONY: test test-coverage test-verbose install-test-deps
+test:
+	uv run --group test pytest
+
+test-coverage:
+	uv run --group test pytest --cov=service_client --cov=server --cov-report=html --cov-report=term-missing
+
+test-verbose:
+	uv run --group test pytest -v
+
+install-test-deps:
+	uv sync --group test
+
 .PHONY: black pylint pyright docstyle ruff check-types verify format
 black:
 	uv run black --check .
@@ -36,7 +49,7 @@ ruff:
 check-types:
 	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined .
 
-verify: black pylint pyright docstyle ruff check-types
+verify: black pylint pyright docstyle ruff check-types test
 
 format:
 	uv run black .
