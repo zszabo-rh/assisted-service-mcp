@@ -18,6 +18,9 @@ RUN chown -R 1001:0 ${APP_HOME}
 
 USER 1001
 
+# Disable file logging in containers - only log to stderr
+ENV LOG_TO_FILE=false
+
 EXPOSE 8000
 
 CMD ["uv", "--cache-dir", "/tmp/uv-cache", "run", "server.py"]
