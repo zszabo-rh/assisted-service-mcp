@@ -16,6 +16,15 @@ import sys
 class SensitiveFormatter(logging.Formatter):
     """Formatter that removes sensitive info."""
 
+    # Default log format used by this formatter
+    DEFAULT_FORMAT = "%(asctime)s - %(name)s - %(levelname)-8s - %(thread)d:%(process)d - %(message)s - (%(pathname)s:%(lineno)d)->%(funcName)s"
+
+    def __init__(self, fmt: str | None = None) -> None:
+        """Initialize with default format if none provided."""
+        if fmt is None:
+            fmt = self.DEFAULT_FORMAT
+        super().__init__(fmt)
+
     @staticmethod
     def _filter(s: str) -> str:
         # Dict filter
@@ -89,11 +98,8 @@ def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileH
     Returns:
         logging.FileHandler: The created file handler.
     """
-    fmt = SensitiveFormatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(thread)d:%(process)d - %(message)s"
-    )
     fh = logging.FileHandler(filename)
-    fh.setFormatter(fmt)
+    fh.setFormatter(SensitiveFormatter())
     logger.addHandler(fh)
     return fh
 
@@ -105,12 +111,8 @@ def add_stream_handler(logger: logging.Logger) -> None:
     Args:
         logger: The logger instance to add the handler to.
     """
-    fmt = SensitiveFormatter(
-        "%(asctime)s  %(name)s %(levelname)-10s - %(thread)d - %(message)s \t"
-        "(%(pathname)s:%(lineno)d)->%(funcName)s"
-    )
     ch = logging.StreamHandler(sys.stderr)
-    ch.setFormatter(fmt)
+    ch.setFormatter(SensitiveFormatter())
     logger.addHandler(ch)
 
 
