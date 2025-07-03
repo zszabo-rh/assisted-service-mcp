@@ -1,14 +1,24 @@
-from mcp.server.fastmcp import FastMCP
+"""
+MCP server for Red Hat Assisted Service API.
+
+This module provides Model Context Protocol (MCP) tools for interacting with
+Red Hat's Assisted Service API to manage OpenShift cluster installations.
+"""
+
 import json
 import os
+
 import requests
+from mcp.server.fastmcp import FastMCP
 
 from service_client import InventoryClient
 
 mcp = FastMCP("AssistedService", host="0.0.0.0")
 
+
 def get_offline_token() -> str:
-    """Retrieve the offline token from environment variables or request headers.
+    """
+    Retrieve the offline token from environment variables or request headers.
 
     This function attempts to get the Red Hat OpenShift Cluster Manager (OCM) offline token
     first from the OFFLINE_TOKEN environment variable, then from the OCM-Offline-Token
@@ -26,14 +36,18 @@ def get_offline_token() -> str:
     if token:
         return token
 
-    token = mcp.get_context().request_context.request.headers.get("OCM-Offline-Token")
-    if token:
-        return token
+    request = mcp.get_context().request_context.request
+    if request is not None:
+        token = request.headers.get("OCM-Offline-Token")
+        if token:
+            return token
 
     raise RuntimeError("No offline token found in environment or request headers")
 
+
 def get_access_token() -> str:
-    """Retrieve the access token.
+    """
+    Retrieve the access token.
 
     This function tries to get the Red Hat OpenShift Cluster Manager (OCM) access token. First
     it tries to extract it from the authorization header, and if it isn't there then it tries
@@ -60,14 +74,19 @@ def get_access_token() -> str:
         "grant_type": "refresh_token",
         "refresh_token": get_offline_token(),
     }
-    sso_url = os.environ.get("SSO_URL", "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token")
-    response = requests.post(sso_url, data=params)
+    sso_url = os.environ.get(
+        "SSO_URL",
+        "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
+    )
+    response = requests.post(sso_url, data=params, timeout=30)
     response.raise_for_status()
     return response.json()["access_token"]
 
+
 @mcp.tool()
 async def cluster_info(cluster_id: str) -> str:
-    """Get comprehensive information about a specific assisted installer cluster.
+    """
+    Get comprehensive information about a specific assisted installer cluster.
 
     Retrieves detailed cluster information including configuration, status, hosts,
     network settings, and installation progress for the specified cluster ID.
@@ -87,9 +106,11 @@ async def cluster_info(cluster_id: str) -> str:
     result = await client.get_cluster(cluster_id=cluster_id)
     return result.to_str()
 
+
 @mcp.tool()
 async def list_clusters() -> str:
-    """List all assisted installer clusters for the current user.
+    """
+    List all assisted installer clusters for the current user.
 
     Retrieves a summary of all clusters associated with the current user's account.
     This provides basic information about each cluster without detailed configuration.
@@ -105,12 +126,22 @@ async def list_clusters() -> str:
     """
     client = InventoryClient(get_access_token())
     clusters = await client.list_clusters()
-    resp = [{"name": cluster["name"], "id": cluster["id"], "openshift_version": cluster["openshift_version"], "status": cluster["status"]} for cluster in clusters]
+    resp = [
+        {
+            "name": cluster["name"],
+            "id": cluster["id"],
+            "openshift_version": cluster["openshift_version"],
+            "status": cluster["status"],
+        }
+        for cluster in clusters
+    ]
     return json.dumps(resp)
+
 
 @mcp.tool()
 async def cluster_events(cluster_id: str) -> str:
-    """Get the events related to a cluster with the given cluster id.
+    """
+    Get the events related to a cluster with the given cluster id.
 
     Retrieves chronological events related to cluster installation, configuration
     changes, and status updates. These events help track installation progress
@@ -126,9 +157,11 @@ async def cluster_events(cluster_id: str) -> str:
     client = InventoryClient(get_access_token())
     return await client.get_events(cluster_id=cluster_id)
 
+
 @mcp.tool()
 async def host_events(cluster_id: str, host_id: str) -> str:
-    """Get events specific to a particular host within a cluster.
+    """
+    Get events specific to a particular host within a cluster.
 
     Retrieves events related to a specific host's installation progress, hardware
     validation, role assignment, and any host-specific issues or status changes.
@@ -144,9 +177,11 @@ async def host_events(cluster_id: str, host_id: str) -> str:
     client = InventoryClient(get_access_token())
     return await client.get_events(cluster_id=cluster_id, host_id=host_id)
 
+
 @mcp.tool()
 async def infraenv_info(infraenv_id: str) -> str:
-    """Get detailed information about an infrastructure environment (InfraEnv).
+    """
+    Get detailed information about an infrastructure environment (InfraEnv).
 
     An InfraEnv contains the configuration and resources needed to boot and discover
     hosts for cluster installation, including the discovery ISO image and network
@@ -167,9 +202,13 @@ async def infraenv_info(infraenv_id: str) -> str:
     result = await client.get_infra_env(infraenv_id)
     return result.to_str()
 
+
 @mcp.tool()
-async def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
-    """Create a new OpenShift cluster and associated infrastructure environment.
+async def create_cluster(
+    name: str, version: str, base_domain: str, single_node: bool
+) -> str:
+    """
+    Create a new OpenShift cluster and associated infrastructure environment.
 
     Creates both a cluster definition and an InfraEnv for host discovery. The cluster
     can be configured for high availability (multi-node) or single-node deployment.
@@ -191,13 +230,19 @@ async def create_cluster(name: str, version: str, base_domain: str, single_node:
     """
     client = InventoryClient(get_access_token())
     mcp_tags = {"created-by": "mcp"}
-    cluster = await client.create_cluster(name, version, single_node, base_dns_domain=base_domain, tags=mcp_tags)
-    infraenv = await client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
-    return json.dumps({'cluster_id': cluster.id, 'infraenv_id': infraenv.id})
+    cluster = await client.create_cluster(
+        name, version, single_node, base_dns_domain=base_domain, tags=mcp_tags
+    )
+    infraenv = await client.create_infra_env(
+        name, cluster_id=cluster.id, openshift_version=cluster.openshift_version
+    )
+    return json.dumps({"cluster_id": cluster.id, "infraenv_id": infraenv.id})
+
 
 @mcp.tool()
 async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
-    """Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
+    """
+    Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
 
     Sets the API VIP (for cluster management) and Ingress VIP (for application traffic)
     for the specified cluster. These VIPs must be available IP addresses within the
@@ -215,12 +260,16 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
             showing the newly set VIP addresses.
     """
     client = InventoryClient(get_access_token())
-    result = await client.update_cluster(cluster_id, api_vip=api_vip, ingress_vip=ingress_vip)
+    result = await client.update_cluster(
+        cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
+    )
     return result.to_str()
+
 
 @mcp.tool()
 async def install_cluster(cluster_id: str) -> str:
-    """Trigger the installation process for a prepared cluster.
+    """
+    Trigger the installation process for a prepared cluster.
 
     Initiates the OpenShift installation on all discovered and validated hosts.
     The cluster must have all prerequisites met including sufficient hosts,
@@ -243,9 +292,11 @@ async def install_cluster(cluster_id: str) -> str:
     result = await client.install_cluster(cluster_id)
     return result.to_str()
 
+
 @mcp.tool()
 async def list_versions() -> str:
-    """List all available OpenShift versions for installation.
+    """
+    List all available OpenShift versions for installation.
 
     Retrieves the complete list of OpenShift versions that can be installed
     using the assisted installer service, including release versions and
@@ -259,9 +310,11 @@ async def list_versions() -> str:
     result = await client.get_openshift_versions(True)
     return json.dumps(result)
 
+
 @mcp.tool()
 async def list_operator_bundles() -> str:
-    """List available operator bundles for cluster installation.
+    """
+    List available operator bundles for cluster installation.
 
     Retrieves operator bundles that can be optionally installed during cluster
     deployment. These include Red Hat and certified partner operators for
@@ -275,9 +328,11 @@ async def list_operator_bundles() -> str:
     result = await client.get_operator_bundles()
     return json.dumps(result)
 
+
 @mcp.tool()
 async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
-    """Add an operator bundle to be installed with the cluster.
+    """
+    Add an operator bundle to be installed with the cluster.
 
     Configures the specified operator bundle to be automatically installed
     during cluster deployment. The bundle must be from the list of available
@@ -296,9 +351,11 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
     result = await client.add_operator_bundle_to_cluster(cluster_id, bundle_name)
     return result.to_str()
 
+
 @mcp.tool()
 async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
-    """Assign a specific role to a discovered host in the cluster.
+    """
+    Assign a specific role to a discovered host in the cluster.
 
     Sets the role for a host that has been discovered through the InfraEnv boot process.
     The role determines the host's function in the OpenShift cluster.
@@ -318,6 +375,7 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     client = InventoryClient(get_access_token())
     result = await client.update_host(host_id, infraenv_id, host_role=role)
     return result.to_str()
+
 
 if __name__ == "__main__":
     mcp.run(transport="sse")
