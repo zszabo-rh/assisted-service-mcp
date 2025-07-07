@@ -1,3 +1,1 @@
-"""
-Test package for assisted-service-mcp.
-"""
+"""Test package for assisted-service-mcp."""

@@ -4,9 +4,10 @@ Unit tests for the server module.
 
 import json
 import os
-import pytest
+from typing import Generator, Tuple
 from unittest.mock import Mock, patch
 
+import pytest
 from requests.exceptions import RequestException
 
 from service_client import InventoryClient
@@ -17,43 +18,47 @@ class TestTokenFunctions:
     """Test cases for token handling functions."""
 
     @pytest.fixture
-    def mock_mcp_get_context(self):
+    def mock_mcp_get_context(self) -> Generator[Tuple[Mock, Mock], None, None]:
         """Mock MCP context for testing."""
         mock_context = Mock()
         mock_request = Mock()
         mock_context.request_context.request = mock_request
-        
+
         with patch.object(server.mcp, "get_context", return_value=mock_context):
             yield mock_context, mock_request
 
-    def test_get_offline_token_from_environment(self):
+    def test_get_offline_token_from_environment(self) -> None:
         """Test retrieving offline token from environment variables."""
         test_token = "test-offline-token"
         with patch.dict(os.environ, {"OFFLINE_TOKEN": test_token}):
             result = server.get_offline_token()
             assert result == test_token
 
-    def test_get_offline_token_environment_takes_precedence(self, mock_mcp_get_context):
+    def test_get_offline_token_environment_takes_precedence(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test that environment token takes precedence over request header token."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         env_token = "environment-token"
         header_token = "header-token"
-        
+
         # Set up both environment and header tokens
         mock_request.headers.get.return_value = header_token
-        
+
         with patch.dict(os.environ, {"OFFLINE_TOKEN": env_token}):
             result = server.get_offline_token()
-            
+
             # Should return the environment token, not the header token
             assert result == env_token
-            
+
             # Should not even check the request headers since env token was found
             mock_request.headers.get.assert_not_called()
 
-    def test_get_offline_token_from_headers(self, mock_mcp_get_context):
+    def test_get_offline_token_from_headers(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test retrieving offline token from request headers."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         test_token = "test-offline-token-header"
         mock_request.headers.get.return_value = test_token
 
@@ -63,9 +68,11 @@ class TestTokenFunctions:
             assert result == test_token
             mock_request.headers.get.assert_called_once_with("OCM-Offline-Token")
 
-    def test_get_offline_token_not_found(self, mock_mcp_get_context):
+    def test_get_offline_token_not_found(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test error when offline token is not found."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = None
 
         with patch.dict(os.environ, {}, clear=True):
@@ -73,7 +80,7 @@ class TestTokenFunctions:
                 server.get_offline_token()
             assert "No offline token found" in str(exc_info.value)
 
-    def test_get_offline_token_no_request(self):
+    def test_get_offline_token_no_request(self) -> None:
         """Test offline token retrieval when no request is available."""
         mock_context = Mock()
         mock_context.request_context.request = None
@@ -84,9 +91,11 @@ class TestTokenFunctions:
                     server.get_offline_token()
                 assert "No offline token found" in str(exc_info.value)
 
-    def test_get_access_token_from_authorization_header(self, mock_mcp_get_context):
+    def test_get_access_token_from_authorization_header(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test retrieving access token from Authorization header."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         test_token = "test-access-token"
         mock_request.headers.get.return_value = f"Bearer {test_token}"
 
@@ -94,9 +103,11 @@ class TestTokenFunctions:
         assert result == test_token
         mock_request.headers.get.assert_called_once_with("Authorization")
 
-    def test_get_access_token_invalid_authorization_header(self, mock_mcp_get_context):
+    def test_get_access_token_invalid_authorization_header(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test access token retrieval with invalid Authorization header."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = "Invalid header format"
 
         with patch.object(server, "get_offline_token", return_value="offline-token"):
@@ -108,9 +119,11 @@ class TestTokenFunctions:
                 result = server.get_access_token()
                 assert result == "new-token"
 
-    def test_get_access_token_no_authorization_header(self, mock_mcp_get_context):
+    def test_get_access_token_no_authorization_header(
+        self, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test access token retrieval without Authorization header."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = None
 
         with patch.object(server, "get_offline_token", return_value="offline-token"):
@@ -124,10 +137,10 @@ class TestTokenFunctions:
 
     @patch("requests.post")
     def test_get_access_token_generate_from_offline_token(
-        self, mock_post, mock_mcp_get_context
-    ):
+        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test generating access token from offline token."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = None
 
         offline_token = "test-offline-token"
@@ -152,9 +165,11 @@ class TestTokenFunctions:
             )
 
     @patch("requests.post")
-    def test_get_access_token_custom_sso_url(self, mock_post, mock_mcp_get_context):
+    def test_get_access_token_custom_sso_url(
+        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test access token generation with custom SSO URL."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = None
 
         custom_sso_url = "https://custom-sso.example.com/token"
@@ -181,9 +196,11 @@ class TestTokenFunctions:
                 )
 
     @patch("requests.post")
-    def test_get_access_token_request_failure(self, mock_post, mock_mcp_get_context):
+    def test_get_access_token_request_failure(
+        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+    ) -> None:
         """Test access token generation request failure."""
-        mock_context, mock_request = mock_mcp_get_context
+        _mock_context, mock_request = mock_mcp_get_context
         mock_request.headers.get.return_value = None
 
         mock_post.side_effect = RequestException("Network error")
@@ -192,7 +209,7 @@ class TestTokenFunctions:
             with pytest.raises(RequestException):
                 server.get_access_token()
 
-    def test_get_access_token_no_request_context(self):
+    def test_get_access_token_no_request_context(self) -> None:
         """Test access token retrieval when no request context is available."""
         mock_context = Mock()
         mock_context.request_context.request = None
@@ -214,20 +231,22 @@ class TestMCPToolFunctions:
     """Test cases for MCP tool functions."""
 
     @pytest.fixture
-    def mock_inventory_client(self):
+    def mock_inventory_client(self) -> Mock:
         """Mock InventoryClient for testing."""
         return Mock(spec=InventoryClient)
 
     @pytest.fixture
-    def mock_get_access_token(self):
+    def mock_get_access_token(self) -> Generator[None, None, None]:
         """Mock get_access_token function."""
         with patch.object(server, "get_access_token", return_value="test-access-token"):
             yield
 
     @pytest.mark.asyncio
     async def test_cluster_info_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful cluster_info function."""
         cluster_id = "test-cluster-id"
         mock_cluster = Mock()
@@ -246,8 +265,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_list_clusters_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful list_clusters function."""
         mock_clusters = [
             {
@@ -276,8 +297,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_cluster_events_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful cluster_events function."""
         cluster_id = "test-cluster-id"
         mock_events = '{"events": ["event1", "event2"]}'
@@ -295,8 +318,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_host_events_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful host_events function."""
         cluster_id = "test-cluster-id"
         host_id = "test-host-id"
@@ -315,8 +340,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_infraenv_info_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful infraenv_info function."""
         infraenv_id = "test-infraenv-id"
         mock_infraenv = Mock()
@@ -333,8 +360,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_create_cluster_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful create_cluster function."""
         name = "test-cluster"
         version = "4.18.2"
@@ -371,8 +400,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_set_cluster_vips_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful set_cluster_vips function."""
         cluster_id = "test-cluster-id"
         api_vip = "192.168.1.100"
@@ -394,8 +425,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_install_cluster_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful install_cluster function."""
         cluster_id = "test-cluster-id"
         mock_cluster = Mock()
@@ -412,8 +445,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_list_versions_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful list_versions function."""
         mock_versions = {"versions": ["4.18.2", "4.17.1"]}
         mock_inventory_client.get_openshift_versions.return_value = mock_versions
@@ -429,8 +464,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_list_operator_bundles_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful list_operator_bundles function."""
         mock_bundles = [
             {"name": "bundle1", "operators": ["op1"]},
@@ -449,8 +486,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_add_operator_bundle_to_cluster_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful add_operator_bundle_to_cluster function."""
         cluster_id = "test-cluster-id"
         bundle_name = "test-bundle"
@@ -473,8 +512,10 @@ class TestMCPToolFunctions:
 
     @pytest.mark.asyncio
     async def test_set_host_role_success(
-        self, mock_inventory_client, mock_get_access_token
-    ):
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
         """Test successful set_host_role function."""
         host_id = "test-host-id"
         infraenv_id = "test-infraenv-id"

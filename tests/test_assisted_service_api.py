@@ -3,9 +3,9 @@ Unit tests for the assisted_service_api module.
 """
 
 import os
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
 from requests.exceptions import RequestException
 from assisted_service_client.rest import ApiException
 from assisted_service_client import Configuration, models
@@ -13,16 +13,16 @@ from assisted_service_client import Configuration, models
 from service_client.assisted_service_api import InventoryClient
 
 
-class TestInventoryClient:
+class TestInventoryClient:  # pylint: disable=too-many-public-methods
     """Test cases for the InventoryClient class."""
 
     @pytest.fixture
-    def mock_access_token(self):
+    def mock_access_token(self) -> str:
         """Mock access token for testing."""
         return "test-access-token"
 
     @pytest.fixture
-    def client(self, mock_access_token):
+    def client(self, mock_access_token: str) -> InventoryClient:
         """Create a test client instance."""
         with patch.object(
             InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
@@ -30,11 +30,11 @@ class TestInventoryClient:
             return InventoryClient(mock_access_token)
 
     @pytest.fixture
-    def mock_api_client(self):
+    def mock_api_client(self) -> Mock:
         """Mock API client for testing."""
         return Mock()
 
-    def test_init_with_access_token(self, mock_access_token):
+    def test_init_with_access_token(self, mock_access_token: str) -> None:
         """Test client initialization with access token."""
         with patch.object(
             InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
@@ -48,7 +48,7 @@ class TestInventoryClient:
             )
             assert client.client_debug is False
 
-    def test_init_with_environment_variables(self, mock_access_token):
+    def test_init_with_environment_variables(self, mock_access_token: str) -> None:
         """Test client initialization with environment variables."""
         test_url = "https://custom-api.example.com/v2"
         with patch.dict(
@@ -62,7 +62,9 @@ class TestInventoryClient:
                 assert client.client_debug is True
 
     @patch("requests.post")
-    def test_get_pull_secret_success(self, mock_post, mock_access_token):
+    def test_get_pull_secret_success(
+        self, mock_post: Mock, mock_access_token: str
+    ) -> None:
         """Test successful pull secret retrieval."""
         mock_response = Mock()
         mock_response.text = "pull-secret-content"
@@ -78,7 +80,9 @@ class TestInventoryClient:
         assert client.pull_secret == "pull-secret-content"
 
     @patch("requests.post")
-    def test_get_pull_secret_failure(self, mock_post, mock_access_token):
+    def test_get_pull_secret_failure(
+        self, mock_post: Mock, mock_access_token: str
+    ) -> None:
         """Test pull secret retrieval failure."""
         mock_post.side_effect = RequestException("Network error")
 
@@ -86,7 +90,9 @@ class TestInventoryClient:
             InventoryClient(mock_access_token)
 
     @patch("requests.post")
-    def test_get_pull_secret_with_custom_url(self, mock_post, mock_access_token):
+    def test_get_pull_secret_with_custom_url(
+        self, mock_post: Mock, mock_access_token: str
+    ) -> None:
         """Test pull secret retrieval with custom URL."""
         custom_url = "https://custom-pull-secret.example.com"
         mock_response = Mock()
@@ -102,34 +108,36 @@ class TestInventoryClient:
                 timeout=30,
             )
 
-    def test_get_host_url_parsing(self, client):
+    def test_get_host_url_parsing(self, client: InventoryClient) -> None:
         """Test URL parsing and host replacement."""
         configs = Configuration()
         configs.host = "https://original.example.com/api/v1"
         client.inventory_url = "https://custom.example.com/api/assisted-install/v2"
 
-        result = client._get_host(configs)
+        result = client._get_host(configs)  # pylint: disable=protected-access
 
         # The method replaces the netloc and scheme but keeps the original path
         assert result == "https://custom.example.com/api/v1"
 
     @patch("service_client.assisted_service_api.ApiClient")
-    def test_get_client_configuration(self, mock_api_client_class, client):
+    def test_get_client_configuration(
+        self, mock_api_client_class: Mock, client: InventoryClient
+    ) -> None:
         """Test API client configuration."""
         mock_api_client = Mock()
         mock_api_client_class.return_value = mock_api_client
 
-        result = client._get_client()
+        result = client._get_client()  # pylint: disable=protected-access
 
         assert result == mock_api_client
         # Verify configuration was set up correctly
-        args, kwargs = mock_api_client_class.call_args
+        _args, kwargs = mock_api_client_class.call_args
         config = kwargs["configuration"]
         assert config.api_key_prefix["Authorization"] == "Bearer"
         assert config.api_key["Authorization"] == client.access_token
 
     @pytest.mark.asyncio
-    async def test_get_cluster_success(self, client):
+    async def test_get_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster retrieval."""
         cluster_id = "test-cluster-id"
         mock_cluster = Mock(spec=models.Cluster)
@@ -148,7 +156,7 @@ class TestInventoryClient:
             )
 
     @pytest.mark.asyncio
-    async def test_get_cluster_with_unregistered(self, client):
+    async def test_get_cluster_with_unregistered(self, client: InventoryClient) -> None:
         """Test cluster retrieval with unregistered clusters."""
         cluster_id = "test-cluster-id"
         mock_cluster = Mock(spec=models.Cluster)
@@ -168,7 +176,7 @@ class TestInventoryClient:
             )
 
     @pytest.mark.asyncio
-    async def test_get_cluster_api_exception(self, client):
+    async def test_get_cluster_api_exception(self, client: InventoryClient) -> None:
         """Test cluster retrieval API exception handling."""
         cluster_id = "test-cluster-id"
 
@@ -186,7 +194,9 @@ class TestInventoryClient:
             assert exc_info.value.reason == "Not Found"
 
     @pytest.mark.asyncio
-    async def test_get_cluster_unexpected_exception(self, client):
+    async def test_get_cluster_unexpected_exception(
+        self, client: InventoryClient
+    ) -> None:
         """Test cluster retrieval unexpected exception handling."""
         cluster_id = "test-cluster-id"
 
@@ -199,7 +209,7 @@ class TestInventoryClient:
                 await client.get_cluster(cluster_id)
 
     @pytest.mark.asyncio
-    async def test_list_clusters_success(self, client):
+    async def test_list_clusters_success(self, client: InventoryClient) -> None:
         """Test successful cluster listing."""
         mock_clusters = [{"id": "cluster1"}, {"id": "cluster2"}]
 
@@ -214,7 +224,7 @@ class TestInventoryClient:
             mock_api.v2_list_clusters.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_events_success(self, client):
+    async def test_get_events_success(self, client: InventoryClient) -> None:
         """Test successful event retrieval."""
         cluster_id = "test-cluster-id"
         mock_events = '{"events": ["event1", "event2"]}'
@@ -238,7 +248,9 @@ class TestInventoryClient:
             )
 
     @pytest.mark.asyncio
-    async def test_get_events_with_custom_categories(self, client):
+    async def test_get_events_with_custom_categories(
+        self, client: InventoryClient
+    ) -> None:
         """Test event retrieval with custom categories."""
         cluster_id = "test-cluster-id"
         categories = ["system", "user"]
@@ -265,7 +277,7 @@ class TestInventoryClient:
             )
 
     @pytest.mark.asyncio
-    async def test_get_infra_env_success(self, client):
+    async def test_get_infra_env_success(self, client: InventoryClient) -> None:
         """Test successful infrastructure environment retrieval."""
         infra_env_id = "test-infra-env-id"
         mock_infra_env = Mock(spec=models.InfraEnv)
@@ -282,7 +294,7 @@ class TestInventoryClient:
             mock_api.get_infra_env.assert_called_once_with(infra_env_id=infra_env_id)
 
     @pytest.mark.asyncio
-    async def test_create_cluster_success(self, client):
+    async def test_create_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster creation."""
         name = "test-cluster"
         version = "4.18.2"
@@ -302,14 +314,14 @@ class TestInventoryClient:
             assert result == mock_cluster
             mock_api.v2_register_cluster.assert_called_once()
             # Verify the cluster params
-            args, kwargs = mock_api.v2_register_cluster.call_args
+            _args, kwargs = mock_api.v2_register_cluster.call_args
             cluster_params = kwargs["new_cluster_params"]
             assert cluster_params.name == name
             assert cluster_params.openshift_version == version
             assert cluster_params.pull_secret == client.pull_secret
 
     @pytest.mark.asyncio
-    async def test_create_cluster_single_node(self, client):
+    async def test_create_cluster_single_node(self, client: InventoryClient) -> None:
         """Test single node cluster creation."""
         name = "test-sno-cluster"
         version = "4.18.2"
@@ -325,14 +337,14 @@ class TestInventoryClient:
 
             assert result == mock_cluster
             # Verify single node specific parameters have correct values
-            args, kwargs = mock_api.v2_register_cluster.call_args
+            _args, kwargs = mock_api.v2_register_cluster.call_args
             cluster_params = kwargs["new_cluster_params"]
             assert cluster_params.control_plane_count == 1
             assert cluster_params.high_availability_mode == "None"
             assert cluster_params.user_managed_networking is True
 
     @pytest.mark.asyncio
-    async def test_create_infra_env_success(self, client):
+    async def test_create_infra_env_success(self, client: InventoryClient) -> None:
         """Test successful infrastructure environment creation."""
         name = "test-infra-env"
         mock_infra_env = Mock(spec=models.InfraEnv)
@@ -348,13 +360,13 @@ class TestInventoryClient:
             assert result == mock_infra_env
             mock_api.register_infra_env.assert_called_once()
             # Verify the infra env params
-            args, kwargs = mock_api.register_infra_env.call_args
+            _args, kwargs = mock_api.register_infra_env.call_args
             infra_env_params = kwargs["infraenv_create_params"]
             assert infra_env_params.name == name
             assert infra_env_params.pull_secret == client.pull_secret
 
     @pytest.mark.asyncio
-    async def test_update_cluster_success(self, client):
+    async def test_update_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster update."""
         cluster_id = "test-cluster-id"
         api_vip = "192.168.1.100"
@@ -374,7 +386,7 @@ class TestInventoryClient:
 
             # Verify the call was made with correct cluster_id
             mock_api.v2_update_cluster.assert_called_once()
-            args, kwargs = mock_api.v2_update_cluster.call_args
+            _args, kwargs = mock_api.v2_update_cluster.call_args
             assert kwargs["cluster_id"] == cluster_id
 
             # Verify the cluster_update_params contain the correct VIPs
@@ -393,7 +405,7 @@ class TestInventoryClient:
             assert ingress_vip_obj.ip == ingress_vip
 
     @pytest.mark.asyncio
-    async def test_install_cluster_success(self, client):
+    async def test_install_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster installation."""
         cluster_id = "test-cluster-id"
         mock_cluster = Mock(spec=models.Cluster)
@@ -409,7 +421,9 @@ class TestInventoryClient:
             mock_api.v2_install_cluster.assert_called_once_with(cluster_id=cluster_id)
 
     @pytest.mark.asyncio
-    async def test_get_openshift_versions_success(self, client):
+    async def test_get_openshift_versions_success(
+        self, client: InventoryClient
+    ) -> None:
         """Test successful OpenShift versions retrieval."""
         mock_versions = Mock(spec=models.OpenshiftVersions)
 
@@ -426,7 +440,7 @@ class TestInventoryClient:
             )
 
     @pytest.mark.asyncio
-    async def test_get_operator_bundles_success(self, client):
+    async def test_get_operator_bundles_success(self, client: InventoryClient) -> None:
         """Test successful operator bundles retrieval."""
         mock_bundle1 = Mock()
         mock_bundle1.to_dict.return_value = {"name": "bundle1", "operators": ["op1"]}
@@ -447,7 +461,9 @@ class TestInventoryClient:
             mock_api.v2_list_bundles.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_add_operator_bundle_to_cluster_success(self, client):
+    async def test_add_operator_bundle_to_cluster_success(
+        self, client: InventoryClient
+    ) -> None:
         """Test successful operator bundle addition to cluster."""
         cluster_id = "test-cluster-id"
         bundle_name = "test-bundle"
@@ -471,7 +487,7 @@ class TestInventoryClient:
 
                 # Verify update_cluster was called with correct operators
                 mock_update_cluster.assert_called_once()
-                args, kwargs = mock_update_cluster.call_args
+                _args, kwargs = mock_update_cluster.call_args
                 assert kwargs["cluster_id"] == cluster_id  # cluster_id is a keyword arg
 
                 # Verify the olm_operators parameter contains the correct operators
@@ -483,7 +499,7 @@ class TestInventoryClient:
                 assert set(operator_names) == {"operator1", "operator2"}
 
     @pytest.mark.asyncio
-    async def test_update_host_success(self, client):
+    async def test_update_host_success(self, client: InventoryClient) -> None:
         """Test successful host update."""
         host_id = "test-host-id"
         infra_env_id = "test-infra-env-id"
@@ -495,13 +511,15 @@ class TestInventoryClient:
             mock_api.v2_update_host.return_value = mock_host
             mock_installer_api.return_value = mock_api
 
-            result = await client.update_host(host_id, infra_env_id, host_role=host_role)
+            result = await client.update_host(
+                host_id, infra_env_id, host_role=host_role
+            )
 
             assert result == mock_host
             mock_api.v2_update_host.assert_called_once()
 
             # Verify the call arguments
-            args, kwargs = mock_api.v2_update_host.call_args
+            args, _kwargs = mock_api.v2_update_host.call_args
             assert args[0] == infra_env_id
             assert args[1] == host_id
 
