@@ -339,24 +339,92 @@ class TestMCPToolFunctions:
             )
 
     @pytest.mark.asyncio
-    async def test_infraenv_info_success(
+    async def test_cluster_iso_download_url_success(
         self,
         mock_inventory_client: Mock,
         mock_get_access_token: None,  # pylint: disable=unused-argument
     ) -> None:
-        """Test successful infraenv_info function."""
-        infraenv_id = "test-infraenv-id"
-        mock_infraenv = Mock()
-        mock_infraenv.to_str.return_value = "infraenv-info-string"
-        mock_inventory_client.get_infra_env.return_value = mock_infraenv
+        """Test successful cluster_iso_download_url function with single infraenv."""
+        cluster_id = "test-cluster-id"
+        mock_infraenv = {
+            "name": "test-infraenv",
+            "id": "test-infraenv-id",
+            "cluster_id": cluster_id,
+            "openshift_version": "4.18.2",
+            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+        }
+        mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.infraenv_info(infraenv_id)
+            result = await server.cluster_iso_download_url(cluster_id)
 
-            assert result == "infraenv-info-string"
-            mock_inventory_client.get_infra_env.assert_called_once_with(infraenv_id)
+            expected_result = "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+            assert result == expected_result
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+
+    @pytest.mark.asyncio
+    async def test_cluster_iso_download_url_multiple_infraenvs(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful cluster_iso_download_url function with multiple infraenvs."""
+        cluster_id = "test-cluster-id"
+
+        # First infraenv
+        mock_infraenv1 = {
+            "name": "test-infraenv-1",
+            "id": "test-infraenv-id-1",
+            "cluster_id": cluster_id,
+            "openshift_version": "4.18.2",
+            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image",
+        }
+
+        # Second infraenv with different characteristics
+        mock_infraenv2 = {
+            "name": "test-infraenv-2",
+            "id": "test-infraenv-id-2",
+            "cluster_id": cluster_id,
+            "openshift_version": "4.18.2",
+            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image",
+        }
+
+        mock_inventory_client.list_infra_envs.return_value = [
+            mock_infraenv1,
+            mock_infraenv2,
+        ]
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_iso_download_url(cluster_id)
+
+            expected_result = (
+                "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image\n"
+                "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image"
+            )
+            assert result == expected_result
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+
+    @pytest.mark.asyncio
+    async def test_cluster_iso_download_url_no_infraenvs(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test cluster_iso_download_url function when no infraenvs are found."""
+        cluster_id = "test-cluster-id"
+        mock_inventory_client.list_infra_envs.return_value = []
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_iso_download_url(cluster_id)
+
+            assert result == "No ISO download URLs found for this cluster."
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
 
     @pytest.mark.asyncio
     async def test_create_cluster_success(
@@ -385,11 +453,7 @@ class TestMCPToolFunctions:
             result = await server.create_cluster(
                 name, version, base_domain, single_node
             )
-
-            expected_result = json.dumps(
-                {"cluster_id": "cluster-id", "infraenv_id": "infraenv-id"}
-            )
-            assert result == expected_result
+            assert result == mock_cluster.id
 
             mock_inventory_client.create_cluster.assert_called_once_with(
                 name, version, single_node, base_dns_domain=base_domain, tags="chatbot"

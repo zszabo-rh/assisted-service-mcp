@@ -200,30 +200,53 @@ async def host_events(cluster_id: str, host_id: str) -> str:
 
 
 @mcp.tool()
-async def infraenv_info(infraenv_id: str) -> str:
+async def cluster_iso_download_url(cluster_id: str) -> str:
     """
-    Get detailed information about an infrastructure environment (InfraEnv).
-
-    An InfraEnv contains the configuration and resources needed to boot and discover
-    hosts for cluster installation, including the discovery ISO image and network
-    configuration.
+    Get ISO download URL(s) for a cluster.
 
     Args:
-        infraenv_id (str): The unique identifier of the infrastructure environment.
+        cluster_id (str): The unique identifier of the cluster.
 
     Returns:
-        str: A formatted string containing comprehensive InfraEnv information including:
-            - ISO download URL for host discovery
-            - Network configuration and proxy settings
-            - SSH public key for host access
-            - Associated cluster information
-            - Static network configuration if applicable
+        str: ISO download URL(s) separated by newlines if multiple URLs exist.
     """
-    log.info("Retrieving InfraEnv information for infraenv_id: %s", infraenv_id)
+    log.info("Retrieving InfraEnv ISO URLs for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
-    result = await client.get_infra_env(infraenv_id)
-    log.info("Successfully retrieved InfraEnv information for %s", infraenv_id)
-    return result.to_str()
+    infra_envs = await client.list_infra_envs(cluster_id)
+
+    if not infra_envs:
+        log.info("No infrastructure environments found for cluster %s", cluster_id)
+        return "No ISO download URLs found for this cluster."
+
+    log.info(
+        "Found %d infrastructure environments for cluster %s",
+        len(infra_envs),
+        cluster_id,
+    )
+
+    # Extract ISO URLs from each infra env
+    iso_urls = []
+    for infra_env in infra_envs:
+        iso_url = infra_env.get("download_url")
+        infra_env_id = infra_env.get("id", "unknown")
+
+        if iso_url:
+            iso_urls.append(iso_url)
+        else:
+            log.warning(
+                "No ISO download URL found for infra env %s",
+                infra_env_id,
+            )
+
+    if not iso_urls:
+        log.info(
+            "No ISO download URLs found in infrastructure environments for cluster %s",
+            cluster_id,
+        )
+        return "No ISO download URLs found for this cluster."
+
+    log.info("Returning %d ISO URLs for cluster %s", len(iso_urls), cluster_id)
+    return "\n".join(iso_urls)
 
 
 @mcp.tool()
@@ -231,10 +254,10 @@ async def create_cluster(
     name: str, version: str, base_domain: str, single_node: bool
 ) -> str:
     """
-    Create a new OpenShift cluster and associated infrastructure environment.
+    Create a new OpenShift cluster.
 
-    Creates both a cluster definition and an InfraEnv for host discovery. The cluster
-    can be configured for high availability (multi-node) or single-node deployment.
+    Creates a cluster definition. The cluster can be configured for high availability
+    (multi-node) or single-node deployment.
 
     Args:
         name (str): The name for the new cluster. Must be unique within your account.
@@ -247,9 +270,7 @@ async def create_cluster(
             production high-availability clusters with multiple control plane nodes.
 
     Returns:
-        str: A JSON string containing the created cluster and InfraEnv IDs:
-            - cluster_id (str): The unique identifier of the created cluster
-            - infraenv_id (str): The unique identifier of the created InfraEnv
+        str: A the created cluster's id
     """
     log.info(
         "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s",
@@ -262,6 +283,10 @@ async def create_cluster(
     cluster = await client.create_cluster(
         name, version, single_node, base_dns_domain=base_domain, tags="chatbot"
     )
+    if cluster.id is None:
+        log.error("Failed to create cluster %s: cluster ID is unset", name)
+        return f"Failed to create cluster {name}: cluster ID is unset"
+
     log.info("Successfully created cluster %s with ID: %s", name, cluster.id)
     infraenv = await client.create_infra_env(
         name, cluster_id=cluster.id, openshift_version=cluster.openshift_version
@@ -271,7 +296,7 @@ async def create_cluster(
         cluster.id,
         infraenv.id,
     )
-    return json.dumps({"cluster_id": cluster.id, "infraenv_id": infraenv.id})
+    return cluster.id
 
 
 @mcp.tool()
