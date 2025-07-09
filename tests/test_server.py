@@ -598,3 +598,97 @@ class TestMCPToolFunctions:
             mock_inventory_client.update_host.assert_called_once_with(
                 host_id, infraenv_id, host_role=role
             )
+
+    @pytest.mark.asyncio
+    async def test_cluster_credentials_download_url_success(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful cluster_credentials_download_url function."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+
+        # Mock the PresignedUrl model object
+        mock_presigned_url = Mock()
+        mock_presigned_url.url = "https://example.com/presigned-url"
+        mock_presigned_url.expires_at = "2023-12-31T23:59:59Z"
+        mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
+            mock_presigned_url
+        )
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_credentials_download_url(
+                cluster_id, file_name
+            )
+
+            expected_result = "URL: https://example.com/presigned-url\nExpires at: 2023-12-31T23:59:59Z"
+            assert result == expected_result
+            mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
+                cluster_id, file_name
+            )
+
+    @pytest.mark.asyncio
+    async def test_cluster_credentials_download_url_no_expiration(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test cluster_credentials_download_url function when no expiration is provided."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+
+        # Mock the PresignedUrl model object without expiration
+        mock_presigned_url = Mock()
+        mock_presigned_url.url = "https://example.com/presigned-url"
+        mock_presigned_url.expires_at = None
+        mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
+            mock_presigned_url
+        )
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_credentials_download_url(
+                cluster_id, file_name
+            )
+
+            expected_result = "URL: https://example.com/presigned-url"
+            assert result == expected_result
+            mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
+                cluster_id, file_name
+            )
+
+    @pytest.mark.asyncio
+    async def test_cluster_credentials_download_url_zero_expiration(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test cluster_credentials_download_url function when expiration is a zero/default date."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+
+        # Mock the PresignedUrl model object with zero/default expiration date
+        mock_presigned_url = Mock()
+        mock_presigned_url.url = "https://example.com/presigned-url"
+        mock_presigned_url.expires_at = "0001-01-01 00:00:00+00:00"
+        mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
+            mock_presigned_url
+        )
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_credentials_download_url(
+                cluster_id, file_name
+            )
+
+            # Should not include expiration time since it's a zero/default value
+            expected_result = "URL: https://example.com/presigned-url"
+            assert result == expected_result
+            mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
+                cluster_id, file_name
+            )

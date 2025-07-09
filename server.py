@@ -430,6 +430,55 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
 
 
 @mcp.tool()
+async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> str:
+    """
+    Get presigned download URL for cluster credential files.
+
+    Retrieves a presigned URL for downloading cluster credential files such as
+    kubeconfig, kubeadmin password, or kubeconfig without ingress configuration.
+    For a successfully installed cluster the kubeconfig file should always be used
+    over the kubeconfig-noingress file.
+    The URL is time-limited and provides secure access to sensitive cluster files.
+    Whenever a URL is returned provide the user with information on the expiration
+    of that URL if possible.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to get credentials for.
+        file_name (str): The type of credential file to download. Valid options are:
+            - "kubeconfig": Standard kubeconfig file for cluster access
+            - "kubeconfig-noingress": Kubeconfig without ingress configuration
+            - "kubeadmin-password": The kubeadmin user password file
+
+    Returns:
+        str: A formatted string containing the presigned URL and optional
+            expiration time. The response format is:
+            - URL: <presigned-download-url>
+            - Expires at: <expiration-timestamp> (if available)
+    """
+    log.info(
+        "Getting presigned URL for cluster %s credentials file %s",
+        cluster_id,
+        file_name,
+    )
+    client = InventoryClient(get_access_token())
+    result = await client.get_presigned_for_cluster_credentials(cluster_id, file_name)
+    log.info(
+        "Successfully retrieved presigned URL for cluster %s credentials file %s - %s",
+        cluster_id,
+        file_name,
+        result,
+    )
+
+    # Format the response as a readable string
+    response_parts = [f"URL: {result.url}"]
+    # Only include expiration time if it's a meaningful date (not a zero/default value)
+    if result.expires_at and not str(result.expires_at).startswith("0001-01-01"):
+        response_parts.append(f"Expires at: {result.expires_at}")
+
+    return "\n".join(response_parts)
+
+
+@mcp.tool()
 async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     """
     Assign a specific role to a discovered host in the cluster.
