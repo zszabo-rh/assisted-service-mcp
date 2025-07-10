@@ -253,6 +253,43 @@ class InventoryClient:
             )
             raise
 
+    async def list_infra_envs(self, cluster_id: str) -> list[dict[str, Any]]:
+        """
+        List infrastructure environments for a specific cluster.
+
+        Args:
+            cluster_id: The unique identifier of the cluster.
+
+        Returns:
+            list[dict[str, Any]]: A list of infrastructure environment dictionaries for the cluster.
+        """
+        try:
+            log.info("Listing infrastructure environments for cluster %s", cluster_id)
+            result = await asyncio.to_thread(
+                self._installer_api().list_infra_envs, cluster_id=cluster_id
+            )
+            log.info(
+                "Successfully listed infrastructure environments for cluster %s",
+                cluster_id,
+            )
+            return cast(list[dict[str, Any]], result)
+        except ApiException as e:
+            log.error(
+                "API error while listing infrastructure environments for cluster %s: Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while listing infrastructure environments for cluster %s: %s",
+                cluster_id,
+                str(e),
+            )
+            raise
+
     async def create_cluster(
         self, name: str, version: str, single_node: bool, **cluster_params: Any
     ) -> models.Cluster:

@@ -106,10 +106,10 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `cluster_id`: Cluster ID (string, required)
   * `host_id`: Host ID (string, required)
 
-### Infrastructure Environment
+### ISO Download URL
 
-* **infraenv_info** - Get detailed information about the assisted installer infra env with the given ID. Contains data like ISO download URL and infra env metadata.
-  * `infraenv_id`: Infrastructure environment ID (string, required)
+* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. Returns ISO download URLs separated by newlines if multiple exist.
+  * `cluster_id`: Cluster ID (string, required)
 
 ### Host Management
 

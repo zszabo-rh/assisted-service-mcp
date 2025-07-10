@@ -294,6 +294,45 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_api.get_infra_env.assert_called_once_with(infra_env_id=infra_env_id)
 
     @pytest.mark.asyncio
+    async def test_list_infra_envs_success(self, client: InventoryClient) -> None:
+        """Test successful infrastructure environments listing for a cluster."""
+        cluster_id = "test-cluster-id"
+        mock_infra_env1 = Mock(spec=models.InfraEnv)
+        mock_infra_env1.id = "infra-env-1"
+        mock_infra_env2 = Mock(spec=models.InfraEnv)
+        mock_infra_env2.id = "infra-env-2"
+        mock_infra_envs = [mock_infra_env1, mock_infra_env2]
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.list_infra_envs.return_value = mock_infra_envs
+            mock_installer_api.return_value = mock_api
+
+            result = await client.list_infra_envs(cluster_id)
+
+            assert result == mock_infra_envs
+            assert len(result) == 2
+            mock_api.list_infra_envs.assert_called_once_with(cluster_id=cluster_id)
+
+    @pytest.mark.asyncio
+    async def test_list_infra_envs_api_exception(self, client: InventoryClient) -> None:
+        """Test infrastructure environments listing API exception handling."""
+        cluster_id = "test-cluster-id"
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.list_infra_envs.side_effect = ApiException(
+                status=404, reason="Not Found"
+            )
+            mock_installer_api.return_value = mock_api
+
+            with pytest.raises(ApiException) as exc_info:
+                await client.list_infra_envs(cluster_id)
+
+            assert exc_info.value.status == 404
+            assert exc_info.value.reason == "Not Found"
+
+    @pytest.mark.asyncio
     async def test_create_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster creation."""
         name = "test-cluster"
