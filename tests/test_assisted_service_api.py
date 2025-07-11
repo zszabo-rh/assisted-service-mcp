@@ -565,3 +565,104 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             # Verify the host update params contain the correct role
             host_update_params = args[2]  # Third positional argument
             assert host_update_params.host_role == host_role
+
+    @pytest.mark.asyncio
+    async def test_get_presigned_for_cluster_credentials_api_exception(
+        self, client: InventoryClient
+    ) -> None:
+        """Test presigned URL retrieval API exception handling."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_get_presigned_for_cluster_credentials.side_effect = (
+                ApiException(status=404, reason="Not Found")
+            )
+            mock_installer_api.return_value = mock_api
+
+            with pytest.raises(ApiException) as exc_info:
+                await client.get_presigned_for_cluster_credentials(
+                    cluster_id, file_name
+                )
+
+            assert exc_info.value.status == 404
+            assert exc_info.value.reason == "Not Found"
+
+    @pytest.mark.asyncio
+    async def test_get_presigned_for_cluster_credentials_unexpected_exception(
+        self, client: InventoryClient
+    ) -> None:
+        """Test presigned URL retrieval unexpected exception handling."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_get_presigned_for_cluster_credentials.side_effect = ValueError(
+                "Unexpected error"
+            )
+            mock_installer_api.return_value = mock_api
+
+            with pytest.raises(ValueError) as exc_info:
+                await client.get_presigned_for_cluster_credentials(
+                    cluster_id, file_name
+                )
+
+            assert str(exc_info.value) == "Unexpected error"
+
+    @pytest.mark.asyncio
+    async def test_get_presigned_for_cluster_credentials_different_file_types(
+        self, client: InventoryClient
+    ) -> None:
+        """Test presigned URL retrieval for different credential file types."""
+        cluster_id = "test-cluster-id"
+        file_types = ["kubeconfig", "kubeconfig-noingress", "kubeadmin-password"]
+
+        for file_name in file_types:
+            mock_presigned_url = Mock(spec=models.PresignedUrl)
+            mock_presigned_url.url = f"https://example.com/presigned-url/{file_name}"
+            mock_presigned_url.expires_at = "2023-12-31T23:59:59Z"
+
+            with patch.object(client, "_installer_api") as mock_installer_api:
+                mock_api = Mock()
+                mock_api.v2_get_presigned_for_cluster_credentials.return_value = (
+                    mock_presigned_url
+                )
+                mock_installer_api.return_value = mock_api
+
+                result = await client.get_presigned_for_cluster_credentials(
+                    cluster_id, file_name
+                )
+
+                assert result == mock_presigned_url
+                mock_api.v2_get_presigned_for_cluster_credentials.assert_called_once_with(
+                    cluster_id=cluster_id, file_name=file_name
+                )
+
+    @pytest.mark.asyncio
+    async def test_get_presigned_for_cluster_credentials_url_only(
+        self, client: InventoryClient
+    ) -> None:
+        """Test presigned URL retrieval when only URL is returned (no expires_at)."""
+        cluster_id = "test-cluster-id"
+        file_name = "kubeconfig"
+        mock_presigned_url = Mock(spec=models.PresignedUrl)
+        mock_presigned_url.url = "https://example.com/presigned-url"
+        mock_presigned_url.expires_at = None
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_get_presigned_for_cluster_credentials.return_value = (
+                mock_presigned_url
+            )
+            mock_installer_api.return_value = mock_api
+
+            result = await client.get_presigned_for_cluster_credentials(
+                cluster_id, file_name
+            )
+
+            assert result == mock_presigned_url
+            mock_api.v2_get_presigned_for_cluster_credentials.assert_called_once_with(
+                cluster_id=cluster_id, file_name=file_name
+            )

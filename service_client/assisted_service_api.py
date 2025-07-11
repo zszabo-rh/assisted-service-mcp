@@ -621,3 +621,53 @@ class InventoryClient:
                 str(e),
             )
             raise
+
+    async def get_presigned_for_cluster_credentials(
+        self, cluster_id: str, file_name: str
+    ) -> models.PresignedUrl:
+        """
+        Get presigned URL for cluster credentials.
+
+        Args:
+            cluster_id: The unique identifier of the cluster.
+            file_name: The credential file to download. Must be one of:
+                      'kubeadmin-password', 'kubeconfig', 'kubeconfig-noingress'.
+
+        Returns:
+            models.PresignedUrl: The presigned URL model containing URL and optional expiration time.
+        """
+        try:
+            log.info(
+                "Getting presigned URL for cluster %s credentials file %s",
+                cluster_id,
+                file_name,
+            )
+            result = await asyncio.to_thread(
+                self._installer_api().v2_get_presigned_for_cluster_credentials,
+                cluster_id=cluster_id,
+                file_name=file_name,
+            )
+            log.info(
+                "Successfully retrieved presigned URL for cluster %s credentials file %s",
+                cluster_id,
+                file_name,
+            )
+            return cast(models.PresignedUrl, result)
+        except ApiException as e:
+            log.error(
+                "API error while getting presigned URL for cluster %s credentials file %s: Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                file_name,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while getting presigned URL for cluster %s credentials file %s: %s",
+                cluster_id,
+                file_name,
+                str(e),
+            )
+            raise
