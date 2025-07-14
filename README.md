@@ -108,7 +108,10 @@ The MCP server provides the following tools for interacting with the OpenShift A
 
 ### ISO Download URL
 
-* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. Returns ISO download URLs separated by newlines if multiple exist.
+* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. A formatted string containing ISO download URLs and optional expiration times. Each ISO's information is formatted as:
+  - URL: <download-url>
+  - Expires at: <expiration-timestamp> (if available)
+  Multiple ISOs are separated by blank lines.
   * `cluster_id`: Cluster ID (string, required)
 
 ### Host Management
