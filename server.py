@@ -10,11 +10,33 @@ import os
 
 import requests
 from mcp.server.fastmcp import FastMCP
+from assisted_service_client import models
 
 from service_client import InventoryClient
 from service_client.logger import log
 
 mcp = FastMCP("AssistedService", host="0.0.0.0")
+
+
+def format_presigned_url(presigned_url: models.PresignedUrl) -> str:
+    r"""
+    Format a presigned URL object into a readable string.
+
+    Args:
+        presigned_url: A PresignedUrl object with url and optional expires_at attributes.
+
+    Returns:
+        str: A formatted string containing the URL and optional expiration time.
+            Format: "URL: <url>\nExpires at: <expiration>" (if expiration exists)
+    """
+    response_parts = [f"URL: {presigned_url.url}"]
+    # Only include expiration time if it's a meaningful date (not a zero/default value)
+    if presigned_url.expires_at and not str(presigned_url.expires_at).startswith(
+        "0001-01-01"
+    ):
+        response_parts.append(f"Expires at: {presigned_url.expires_at}")
+
+    return "\n".join(response_parts)
 
 
 def get_offline_token() -> str:
@@ -237,15 +259,7 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         presigned_url = await client.get_infra_env_download_url(infra_env_id)
 
         if presigned_url.url:
-            # Format the response as a readable string
-            response_parts = [f"URL: {presigned_url.url}"]
-            # Only include expiration time if it's a meaningful date (not a zero/default value)
-            if presigned_url.expires_at and not str(
-                presigned_url.expires_at
-            ).startswith("0001-01-01"):
-                response_parts.append(f"Expires at: {presigned_url.expires_at}")
-
-            iso_info.append("\n".join(response_parts))
+            iso_info.append(format_presigned_url(presigned_url))
         else:
             log.warning(
                 "No ISO download URL found for infra env %s",
@@ -483,13 +497,7 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
         result,
     )
 
-    # Format the response as a readable string
-    response_parts = [f"URL: {result.url}"]
-    # Only include expiration time if it's a meaningful date (not a zero/default value)
-    if result.expires_at and not str(result.expires_at).startswith("0001-01-01"):
-        response_parts.append(f"Expires at: {result.expires_at}")
-
-    return "\n".join(response_parts)
+    return format_presigned_url(result)
 
 
 @mcp.tool()
