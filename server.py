@@ -208,7 +208,11 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         cluster_id (str): The unique identifier of the cluster.
 
     Returns:
-        str: ISO download URL(s) separated by newlines if multiple URLs exist.
+        str: A formatted string containing ISO download URLs and optional
+            expiration times. Each ISO's information is formatted as:
+            - URL: <download-url>
+            - Expires at: <expiration-timestamp> (if available)
+            Multiple ISOs are separated by blank lines.
     """
     log.info("Retrieving InfraEnv ISO URLs for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
@@ -224,29 +228,36 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         cluster_id,
     )
 
-    # Extract ISO URLs from each infra env
-    iso_urls = []
+    # Extract ISO URLs and expiration dates from each infra env
+    iso_info = []
     for infra_env in infra_envs:
         iso_url = infra_env.get("download_url")
+        expires_at = infra_env.get("expires_at")
         infra_env_id = infra_env.get("id", "unknown")
 
         if iso_url:
-            iso_urls.append(iso_url)
+            # Format the response as a readable string
+            response_parts = [f"URL: {iso_url}"]
+            # Only include expiration time if it's a meaningful date (not a zero/default value)
+            if expires_at and not str(expires_at).startswith("0001-01-01"):
+                response_parts.append(f"Expires at: {expires_at}")
+
+            iso_info.append("\n".join(response_parts))
         else:
             log.warning(
                 "No ISO download URL found for infra env %s",
                 infra_env_id,
             )
 
-    if not iso_urls:
+    if not iso_info:
         log.info(
             "No ISO download URLs found in infrastructure environments for cluster %s",
             cluster_id,
         )
         return "No ISO download URLs found for this cluster."
 
-    log.info("Returning %d ISO URLs for cluster %s", len(iso_urls), cluster_id)
-    return "\n".join(iso_urls)
+    log.info("Returning %d ISO URLs for cluster %s", len(iso_info), cluster_id)
+    return "\n\n".join(iso_info)
 
 
 @mcp.tool()

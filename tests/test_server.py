@@ -234,7 +234,7 @@ class TestTokenFunctions:
                     assert result == "new-token"
 
 
-class TestMCPToolFunctions:
+class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
     """Test cases for MCP tool functions."""
 
     @pytest.fixture
@@ -358,6 +358,7 @@ class TestMCPToolFunctions:
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
             "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+            "expires_at": "2023-12-31T23:59:59Z",
         }
         mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
 
@@ -366,7 +367,7 @@ class TestMCPToolFunctions:
         ):
             result = await server.cluster_iso_download_url(cluster_id)
 
-            expected_result = "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image\nExpires at: 2023-12-31T23:59:59Z"
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
 
@@ -386,6 +387,7 @@ class TestMCPToolFunctions:
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
             "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image",
+            "expires_at": "2023-12-31T23:59:59Z",
         }
 
         # Second infraenv with different characteristics
@@ -395,6 +397,7 @@ class TestMCPToolFunctions:
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
             "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image",
+            "expires_at": "2024-01-15T12:00:00Z",
         }
 
         mock_inventory_client.list_infra_envs.return_value = [
@@ -408,9 +411,65 @@ class TestMCPToolFunctions:
             result = await server.cluster_iso_download_url(cluster_id)
 
             expected_result = (
-                "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image\n"
-                "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image"
+                "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image\n"
+                "Expires at: 2023-12-31T23:59:59Z\n\n"
+                "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image\n"
+                "Expires at: 2024-01-15T12:00:00Z"
             )
+            assert result == expected_result
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+
+    @pytest.mark.asyncio
+    async def test_cluster_iso_download_url_no_expiration(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test cluster_iso_download_url function when no expiration date is provided."""
+        cluster_id = "test-cluster-id"
+        mock_infraenv = {
+            "name": "test-infraenv",
+            "id": "test-infraenv-id",
+            "cluster_id": cluster_id,
+            "openshift_version": "4.18.2",
+            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+        }
+        mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_iso_download_url(cluster_id)
+
+            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+            assert result == expected_result
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+
+    @pytest.mark.asyncio
+    async def test_cluster_iso_download_url_zero_expiration(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test cluster_iso_download_url function when expiration is a zero/default date."""
+        cluster_id = "test-cluster-id"
+        mock_infraenv = {
+            "name": "test-infraenv",
+            "id": "test-infraenv-id",
+            "cluster_id": cluster_id,
+            "openshift_version": "4.18.2",
+            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+            "expires_at": "0001-01-01 00:00:00+00:00",
+        }
+        mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.cluster_iso_download_url(cluster_id)
+
+            # Should not include expiration time since it's a zero/default value
+            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
 
