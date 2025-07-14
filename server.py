@@ -228,19 +228,22 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         cluster_id,
     )
 
-    # Extract ISO URLs and expiration dates from each infra env
+    # Get presigned URLs for each infra env
     iso_info = []
     for infra_env in infra_envs:
-        iso_url = infra_env.get("download_url")
-        expires_at = infra_env.get("expires_at")
         infra_env_id = infra_env.get("id", "unknown")
 
-        if iso_url:
+        # Use the new get_infra_env_download_url method
+        presigned_url = await client.get_infra_env_download_url(infra_env_id)
+
+        if presigned_url.url:
             # Format the response as a readable string
-            response_parts = [f"URL: {iso_url}"]
+            response_parts = [f"URL: {presigned_url.url}"]
             # Only include expiration time if it's a meaningful date (not a zero/default value)
-            if expires_at and not str(expires_at).startswith("0001-01-01"):
-                response_parts.append(f"Expires at: {expires_at}")
+            if presigned_url.expires_at and not str(
+                presigned_url.expires_at
+            ).startswith("0001-01-01"):
+                response_parts.append(f"Expires at: {presigned_url.expires_at}")
 
             iso_info.append("\n".join(response_parts))
         else:

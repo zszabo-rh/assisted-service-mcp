@@ -685,3 +685,87 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_api.v2_get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id=cluster_id, file_name=file_name
             )
+
+    @pytest.mark.asyncio
+    async def test_get_infra_env_download_url_success(
+        self, client: InventoryClient
+    ) -> None:
+        """Test successful presigned URL retrieval for infra env download."""
+        infra_env_id = "test-infraenv-id"
+        presigned_url = create_test_presigned_url(
+            url="https://example.com/infra-env-download",
+            expires_at="2023-12-31T23:59:59Z",
+        )
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.get_infra_env_download_url.return_value = presigned_url
+            mock_installer_api.return_value = mock_api
+
+            result = await client.get_infra_env_download_url(infra_env_id)
+
+            assert result == presigned_url
+            mock_api.get_infra_env_download_url.assert_called_once_with(
+                infra_env_id=infra_env_id
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_infra_env_download_url_api_exception(
+        self, client: InventoryClient
+    ) -> None:
+        """Test infra env download URL retrieval API exception handling."""
+        infra_env_id = "test-infraenv-id"
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.get_infra_env_download_url.side_effect = ApiException(
+                status=404, reason="Not Found"
+            )
+            mock_installer_api.return_value = mock_api
+
+            with pytest.raises(ApiException) as exc_info:
+                await client.get_infra_env_download_url(infra_env_id)
+
+            assert exc_info.value.status == 404
+            assert exc_info.value.reason == "Not Found"
+
+    @pytest.mark.asyncio
+    async def test_get_infra_env_download_url_unexpected_exception(
+        self, client: InventoryClient
+    ) -> None:
+        """Test infra env download URL retrieval unexpected exception handling."""
+        infra_env_id = "test-infraenv-id"
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.get_infra_env_download_url.side_effect = ValueError(
+                "Unexpected error"
+            )
+            mock_installer_api.return_value = mock_api
+
+            with pytest.raises(ValueError) as exc_info:
+                await client.get_infra_env_download_url(infra_env_id)
+
+            assert str(exc_info.value) == "Unexpected error"
+
+    @pytest.mark.asyncio
+    async def test_get_infra_env_download_url_no_expiration(
+        self, client: InventoryClient
+    ) -> None:
+        """Test infra env download URL retrieval when no expiration is returned."""
+        infra_env_id = "test-infraenv-id"
+        presigned_url = create_test_presigned_url(
+            url="https://example.com/infra-env-download", expires_at=None
+        )
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.get_infra_env_download_url.return_value = presigned_url
+            mock_installer_api.return_value = mock_api
+
+            result = await client.get_infra_env_download_url(infra_env_id)
+
+            assert result == presigned_url
+            mock_api.get_infra_env_download_url.assert_called_once_with(
+                infra_env_id=infra_env_id
+            )
