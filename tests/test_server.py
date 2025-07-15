@@ -5,7 +5,7 @@ Unit tests for the server module.
 import json
 import os
 from typing import Generator, Tuple
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
 
 import pytest
 from requests.exceptions import RequestException
@@ -357,10 +357,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             "id": "test-infraenv-id",
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
-            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
-            "expires_at": "2023-12-31T23:59:59Z",
         }
         mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
+        mock_inventory_client.get_infra_env_download_url.return_value = create_test_presigned_url(
+            url="https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+            expires_at="2023-12-31T23:59:59Z",
+        )
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
@@ -370,6 +372,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image\nExpires at: 2023-12-31T23:59:59Z"
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
+                "test-infraenv-id"
+            )
 
     @pytest.mark.asyncio
     async def test_cluster_iso_download_url_multiple_infraenvs(
@@ -386,8 +391,6 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             "id": "test-infraenv-id-1",
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
-            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image",
-            "expires_at": "2023-12-31T23:59:59Z",
         }
 
         # Second infraenv with different characteristics
@@ -396,13 +399,23 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             "id": "test-infraenv-id-2",
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
-            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image",
-            "expires_at": "2024-01-15T12:00:00Z",
         }
 
         mock_inventory_client.list_infra_envs.return_value = [
             mock_infraenv1,
             mock_infraenv2,
+        ]
+
+        # Mock return values for each infra env
+        mock_inventory_client.get_infra_env_download_url.side_effect = [
+            create_test_presigned_url(
+                url="https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image",
+                expires_at="2023-12-31T23:59:59Z",
+            ),
+            create_test_presigned_url(
+                url="https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image",
+                expires_at="2024-01-15T12:00:00Z",
+            ),
         ]
 
         with patch.object(
@@ -418,6 +431,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             )
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.get_infra_env_download_url.assert_has_calls(
+                [
+                    call("test-infraenv-id-1"),
+                    call("test-infraenv-id-2"),
+                ]
+            )
 
     @pytest.mark.asyncio
     async def test_cluster_iso_download_url_no_expiration(
@@ -432,9 +451,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             "id": "test-infraenv-id",
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
-            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
         }
         mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
+        mock_inventory_client.get_infra_env_download_url.return_value = create_test_presigned_url(
+            url="https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+            expires_at=None,
+        )
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
@@ -444,6 +466,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
+                "test-infraenv-id"
+            )
 
     @pytest.mark.asyncio
     async def test_cluster_iso_download_url_zero_expiration(
@@ -458,10 +483,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             "id": "test-infraenv-id",
             "cluster_id": cluster_id,
             "openshift_version": "4.18.2",
-            "download_url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
-            "expires_at": "0001-01-01 00:00:00+00:00",
         }
         mock_inventory_client.list_infra_envs.return_value = [mock_infraenv]
+        mock_inventory_client.get_infra_env_download_url.return_value = create_test_presigned_url(
+            url="https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+            expires_at="0001-01-01 00:00:00+00:00",
+        )
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
@@ -472,6 +499,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
+                "test-infraenv-id"
+            )
 
     @pytest.mark.asyncio
     async def test_cluster_iso_download_url_no_infraenvs(

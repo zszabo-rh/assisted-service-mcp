@@ -671,3 +671,46 @@ class InventoryClient:
                 str(e),
             )
             raise
+
+    async def get_infra_env_download_url(
+        self, infra_env_id: str
+    ) -> models.PresignedUrl:
+        """
+        Get presigned download URL for an infrastructure environment.
+
+        Args:
+            infra_env_id: The unique identifier of the infrastructure environment.
+
+        Returns:
+            models.PresignedUrl: The presigned URL model containing URL and optional expiration time.
+        """
+        try:
+            log.info(
+                "Getting presigned download URL for infrastructure environment %s",
+                infra_env_id,
+            )
+            result = await asyncio.to_thread(
+                self._installer_api().get_infra_env_download_url,
+                infra_env_id=infra_env_id,
+            )
+            log.info(
+                "Successfully retrieved presigned download URL for infrastructure environment %s",
+                infra_env_id,
+            )
+            return cast(models.PresignedUrl, result)
+        except ApiException as e:
+            log.error(
+                "API error while getting presigned download URL for infrastructure environment %s: Status: %s, Reason: %s, Body: %s",
+                infra_env_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while getting presigned download URL for infrastructure environment %s: %s",
+                infra_env_id,
+                str(e),
+            )
+            raise
