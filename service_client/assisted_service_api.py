@@ -34,11 +34,18 @@ class InventoryClient:
     def __init__(self, access_token: str):
         """Initialize the InventoryClient with an access token."""
         self.access_token = access_token
-        self.pull_secret = self._get_pull_secret()
+        self._pull_secret: Optional[str] = None
         self.inventory_url = os.environ.get(
             "INVENTORY_URL", "https://api.openshift.com/api/assisted-install/v2"
         )
         self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
+
+    @property
+    def pull_secret(self) -> str:
+        """Lazy-load the pull secret when first accessed."""
+        if self._pull_secret is None:
+            self._pull_secret = self._get_pull_secret()
+        return self._pull_secret
 
     def _get_pull_secret(self) -> str:
         url = os.environ.get(
